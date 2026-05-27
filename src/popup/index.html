@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pose</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        width: 280px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #0f0f0f;
+        color: #e8e8e8;
+        padding: 20px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+
+      h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.05em; }
+
+      .count { font-size: 11px; color: #666; }
+
+      /* Toggle */
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #1e1e1e;
+      }
+
+      .toggle-label { font-size: 13px; color: #aaa; }
+
+      .toggle {
+        position: relative;
+        width: 36px;
+        height: 20px;
+      }
+
+      .toggle input { opacity: 0; width: 0; height: 0; }
+
+      .slider {
+        position: absolute;
+        inset: 0;
+        background: #333;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .slider::before {
+        content: '';
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        left: 3px;
+        top: 3px;
+        background: #888;
+        border-radius: 50%;
+        transition: transform 0.2s, background 0.2s;
+      }
+
+      input:checked + .slider { background: #1a1a1a; }
+      input:checked + .slider::before { transform: translateX(16px); background: #fff; }
+
+      /* Selfie section */
+      .section-label {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #555;
+        margin-bottom: 10px;
+      }
+
+      .selfie-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #1e1e1e;
+      }
+
+      .selfie-preview {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #1e1e1e;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .selfie-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: none;
+      }
+
+      .selfie-placeholder {
+        font-size: 20px;
+        color: #444;
+      }
+
+      .upload-btn {
+        flex: 1;
+        font-size: 12px;
+        padding: 8px 12px;
+        background: #1e1e1e;
+        border: 1px solid #2a2a2a;
+        border-radius: 6px;
+        color: #aaa;
+        cursor: pointer;
+        text-align: center;
+        transition: background 0.15s;
+      }
+
+      .upload-btn:hover { background: #272727; color: #e8e8e8; }
+
+      input[type="file"] { display: none; }
+
+      /* API key */
+      .api-row {
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #1e1e1e;
+      }
+
+      input[type="text"], input[type="password"] {
+        width: 100%;
+        padding: 8px 10px;
+        background: #1e1e1e;
+        border: 1px solid #2a2a2a;
+        border-radius: 6px;
+        color: #e8e8e8;
+        font-size: 12px;
+        font-family: 'SF Mono', monospace;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+
+      input[type="text"]:focus, input[type="password"]:focus {
+        border-color: #444;
+      }
+
+      input::placeholder { color: #444; }
+
+      /* Daily limit */
+      .limit-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #1e1e1e;
+      }
+
+      .limit-input {
+        width: 60px;
+        text-align: center;
+      }
+
+      .limit-used { font-size: 11px; color: #555; }
+
+      /* Dressing room button */
+      .open-btn {
+        width: 100%;
+        padding: 10px;
+        background: #e8e8e8;
+        color: #0f0f0f;
+        border: none;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .open-btn:hover { background: #fff; }
+      .open-btn:disabled { background: #1e1e1e; color: #444; cursor: default; }
+
+      .looks-count {
+        text-align: center;
+        font-size: 11px;
+        color: #555;
+        margin-top: 8px;
+      }
+
+      .status-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #333;
+        margin-right: 6px;
+      }
+
+      .status-dot.active { background: #4caf50; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>POSE</h1>
+      <span class="count" id="looksCount">— looks</span>
+    </header>
+
+    <div class="toggle-row">
+      <span class="toggle-label">
+        <span class="status-dot" id="statusDot"></span>Active
+      </span>
+      <label class="toggle">
+        <input type="checkbox" id="enabledToggle" checked />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="selfie-row">
+      <div class="selfie-preview" id="selfiePreview">
+        <img id="selfieImg" alt="your face" />
+        <span class="selfie-placeholder" id="selfiePlaceholder">👤</span>
+      </div>
+      <label class="upload-btn" for="selfieInput" id="uploadLabel">
+        Upload your photo
+      </label>
+      <input type="file" id="selfieInput" accept="image/*" />
+    </div>
+
+    <div class="api-row">
+      <div class="section-label">OpenAI API Key</div>
+      <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off" />
+    </div>
+
+    <div class="limit-row">
+      <span class="section-label">Daily limit</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="limit-used" id="limitUsed">0 used</span>
+        <input type="text" id="limitInput" class="limit-input" value="50" />
+      </div>
+    </div>
+
+    <button class="open-btn" id="openDressingRoom">Open Dressing Room</button>
+    <div class="looks-count" id="bottomCount"></div>
+
+    <script type="module" src="./popup.ts"></script>
+  </body>
+</html>

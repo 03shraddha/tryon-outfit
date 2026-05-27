@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dressing Room — Pose</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #0c0c0c;
+        color: #e8e8e8;
+        min-height: 100vh;
+      }
+
+      /* Header */
+      .header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        padding: 32px 40px 0;
+        border-bottom: 1px solid #1a1a1a;
+        padding-bottom: 24px;
+      }
+
+      .header-left h1 {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        color: #e8e8e8;
+        margin-bottom: 2px;
+      }
+
+      .total-count {
+        font-size: 11px;
+        color: #444;
+      }
+
+      /* Tabs */
+      .tabs {
+        display: flex;
+        gap: 0;
+        padding: 0 40px;
+        border-bottom: 1px solid #1a1a1a;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .tabs::-webkit-scrollbar { display: none; }
+
+      .tab {
+        padding: 14px 16px;
+        font-size: 12px;
+        color: #555;
+        cursor: pointer;
+        border-bottom: 1px solid transparent;
+        white-space: nowrap;
+        transition: color 0.15s;
+        user-select: none;
+      }
+
+      .tab:hover { color: #aaa; }
+
+      .tab.active {
+        color: #e8e8e8;
+        border-bottom-color: #e8e8e8;
+      }
+
+      .tab .tab-count {
+        margin-left: 6px;
+        font-size: 10px;
+        color: #444;
+      }
+
+      .tab.active .tab-count { color: #777; }
+
+      /* Grid */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 2px;
+        padding: 2px;
+      }
+
+      /* Card */
+      .card {
+        position: relative;
+        aspect-ratio: 3/4;
+        overflow: hidden;
+        background: #111;
+        cursor: pointer;
+      }
+
+      .card img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: opacity 0.25s;
+      }
+
+      .card .original {
+        opacity: 0;
+        z-index: 2;
+      }
+
+      .card:hover .original { opacity: 1; }
+
+      .card .domain-tag {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        font-size: 10px;
+        color: #888;
+        background: rgba(0,0,0,0.6);
+        padding: 3px 7px;
+        border-radius: 3px;
+        z-index: 3;
+        pointer-events: none;
+      }
+
+      /* Status overlay for pending/processing */
+      .card .status-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #111;
+        z-index: 4;
+        gap: 10px;
+      }
+
+      .spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #222;
+        border-top-color: #666;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      .status-label {
+        font-size: 10px;
+        color: #444;
+        letter-spacing: 0.06em;
+      }
+
+      .error-icon {
+        font-size: 18px;
+        color: #444;
+      }
+
+      /* Empty state */
+      .empty {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 80px 40px;
+        color: #333;
+      }
+
+      .empty h2 {
+        font-size: 16px;
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: #444;
+      }
+
+      .empty p {
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      /* Hover hint */
+      .hover-hint {
+        font-size: 11px;
+        color: #333;
+        padding: 16px 40px;
+        text-align: right;
+      }
+
+      .content { padding: 0; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div class="header-left">
+        <h1>POSE · DRESSING ROOM</h1>
+        <div class="total-count" id="totalCount">Loading…</div>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+    <div class="hover-hint" id="hoverHint" style="display:none">Hover to see original</div>
+
+    <div class="content">
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <script type="module" src="./dressing-room.ts"></script>
+  </body>
+</html>

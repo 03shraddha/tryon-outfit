@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Pose",
+  "version": "0.1.0",
+  "description": "See any clothing model replaced with your face as you browse.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_badge_background_color": "#1a1a1a",
+    "default_badge_text_color": "#ffffff"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/index.ts"],
+      "run_at": "document_idle"
+    }
+  ]
+}
