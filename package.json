@@ -6,13 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0",
     "@types/chrome": "^0.1.42",
+    "@vitest/coverage-v8": "^4.1.7",
+    "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^20.9.0",
     "typescript": "~6.0.2",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "vitest": "^4.1.7"
   },
   "dependencies": {
     "idb": "^8.0.3"

@@ -56,3 +56,9 @@ export async function getDomains(): Promise<string[]> {
   const all = await getAllLooks()
   return [...new Set(all.map((l) => l.domain))]
 }
+
+// Only used in tests — clears all records without dropping the database
+export async function _clearAll(): Promise<void> {
+  const db = await getDb()
+  await db.clear(STORE)
+}
