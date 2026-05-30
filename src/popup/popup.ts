@@ -12,6 +12,7 @@ const limitUsed = document.getElementById('limitUsed') as HTMLSpanElement
 const looksCount = document.getElementById('looksCount') as HTMLSpanElement
 const bottomCount = document.getElementById('bottomCount') as HTMLDivElement
 const openBtn = document.getElementById('openDressingRoom') as HTMLButtonElement
+const revealBtn = document.getElementById('revealBtn') as HTMLButtonElement
 
 function showSelfie(base64: string): void {
   selfieImg.src = base64
@@ -87,6 +88,12 @@ limitInput.addEventListener('input', () => {
       await chrome.storage.local.set({ dailyLimit: val })
     }
   }, 600)
+})
+
+revealBtn.addEventListener('click', () => {
+  const isPassword = apiKeyInput.type === 'password'
+  apiKeyInput.type = isPassword ? 'text' : 'password'
+  revealBtn.textContent = isPassword ? '🙈' : '👁'
 })
 
 openBtn.addEventListener('click', () => {

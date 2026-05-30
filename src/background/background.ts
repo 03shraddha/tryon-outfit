@@ -1,5 +1,6 @@
 import { addLook, updateLook, getLookCount, hasProcessed } from '../lib/db.ts'
 import { swapModel } from '../lib/openai.ts'
+import { normalizeImageUrl, isUnfetchableUrl } from '../lib/imageUrl.ts'
 import type { MessageToBackground, QueueItem } from '../types.ts'
 
 const queue: QueueItem[] = []
@@ -42,9 +43,33 @@ async function processImage(item: QueueItem): Promise<void> {
 
     await updateLook(item.id, { status: 'processing' })
 
-    const productRes = await fetch(item.src)
-    if (!productRes.ok) throw new Error('Failed to fetch product image')
+    // Defensive re-check: the content script should never send these, but
+    // guard here too so a stale queue entry can't cause a confusing error.
+    if (isUnfetchableUrl(item.src)) {
+      throw new Error(`Unfetchable URL scheme: ${item.src.slice(0, 30)}`)
+    }
+
+    // Upgrade low-res CDN URLs to the highest-quality variant available
+    // without authentication (Myntra Cloudinary transforms, Amazon size tokens).
+    const fetchUrl = normalizeImageUrl(item.src)
+
+    const productRes = await fetch(fetchUrl)
+    if (!productRes.ok) throw new Error(`Failed to fetch product image: HTTP ${productRes.status}`)
+
+    // Reject responses that look like HTML error pages served with 200 status
+    // (common from CDNs that serve a "Not Found" HTML page instead of 404).
+    const contentType = productRes.headers.get('content-type') ?? ''
+    if (!contentType.startsWith('image/')) {
+      throw new Error(`Unexpected content-type from CDN: ${contentType.split(';')[0]}`)
+    }
+
     const productBlob = await productRes.blob()
+
+    // A valid image blob should have non-zero size. A 1×1 placeholder that
+    // somehow slipped through would typically be < 100 bytes.
+    if (productBlob.size < 1024) {
+      throw new Error(`Product image too small to process (${productBlob.size} bytes)`)
+    }
 
     const processedBlob = await swapModel(productBlob, selfie, apiKey)
 
@@ -75,6 +100,10 @@ chrome.runtime.onMessage.addListener((message: MessageToBackground, _sender, _se
   if (message.type !== 'QUEUE_IMAGE') return
 
   const { src, domain } = message
+
+  // Drop data: and blob: URLs immediately — they can't be fetched from a
+  // service worker and were not supposed to be sent by the content script.
+  if (isUnfetchableUrl(src)) return
 
   if (queuedUrls.has(src)) return
 

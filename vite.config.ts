@@ -8,6 +8,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         'dressing-room': 'src/dressing-room/index.html',
+        background: 'src/background/background.ts',
+        content: 'src/content/index.ts',
       },
     },
   },

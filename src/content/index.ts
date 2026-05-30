@@ -1,35 +1,40 @@
 import type { MessageToBackground } from '../types.ts'
+import { isUnfetchableUrl, isPlaceholderDataUri } from '../lib/imageUrl.ts'
 
-const MIN_WIDTH = 200
-const MIN_HEIGHT = 300
-const MIN_PORTRAIT_RATIO = 1.1
+const MIN_SIZE = 300
+const PORTRAIT_RATIO = 1.1
+const SQUARE_MIN = 500
+const SQUARE_RATIO_LO = 0.8
+const SQUARE_RATIO_HI = 1.25
+const FASHION_CDN_RE = /myntassets\.com|media-amazon\.com|images-amazon\.com|ssl-images-amazon\.com/
 
-declare class FaceDetector {
-  constructor(options?: { fastMode?: boolean; maxDetectedFaces?: number })
-  detect(image: HTMLImageElement): Promise<Array<{ boundingBox: DOMRectReadOnly }>>
+const LAZY_ATTRS = ['data-src', 'data-lazy-src', 'data-original', 'data-lazy', 'data-hi-res'] as const
+
+function resolveUrl(img: HTMLImageElement): string {
+  if (img.currentSrc) return img.currentSrc
+  for (const attr of LAZY_ATTRS) {
+    const val = img.getAttribute(attr)
+    if (val && !val.startsWith('data:')) return val
+  }
+  return img.src
 }
 
-const faceDetector: FaceDetector | null =
-  'FaceDetector' in window
-    ? new FaceDetector({ fastMode: true, maxDetectedFaces: 1 })
-    : null
-
-async function isModelImage(img: HTMLImageElement): Promise<boolean> {
-  if (img.naturalWidth < MIN_WIDTH || img.naturalHeight < MIN_HEIGHT) return false
-
-  if (faceDetector) {
-    try {
-      const faces = await faceDetector.detect(img)
-      return faces.length > 0
-    } catch {
-      // Cross-origin or tainted canvas — fall through to heuristic
-    }
-  }
-
-  return img.naturalHeight / img.naturalWidth >= MIN_PORTRAIT_RATIO
+function isModelImage(img: HTMLImageElement, url: string): boolean {
+  const w = img.naturalWidth
+  const h = img.naturalHeight
+  if (w < MIN_SIZE || h < MIN_SIZE) return false
+  const ratio = h / w
+  if (ratio >= PORTRAIT_RATIO) return true
+  if (w >= SQUARE_MIN && h >= SQUARE_MIN && ratio >= SQUARE_RATIO_LO && ratio <= SQUARE_RATIO_HI)
+    return FASHION_CDN_RE.test(url)
+  return false
 }
 
 function sendToBackground(src: string): void {
+  // Reject data: URIs (placeholders, inlined images) and blob: URLs
+  // (local object URLs that are not accessible from the service worker).
+  if (isUnfetchableUrl(src)) return
+
   const message: MessageToBackground = {
     type: 'QUEUE_IMAGE',
     src,
@@ -49,28 +54,27 @@ const intersectionObserver = new IntersectionObserver(
       const img = entry.target as HTMLImageElement
       intersectionObserver.unobserve(img)
 
-      if (!img.complete || img.naturalWidth === 0) {
+      if (!img.complete || img.naturalWidth === 0 || img.naturalWidth < MIN_SIZE) {
         img.addEventListener(
           'load',
           () => {
-            isModelImage(img).then((yes) => {
-              if (yes && !seenThisPage.has(img.src)) {
-                seenThisPage.add(img.src)
-                sendToBackground(img.src)
-              }
-            })
+            const url = resolveUrl(img)
+            if (isUnfetchableUrl(url) || isPlaceholderDataUri(url)) return
+            if (isModelImage(img, url) && !seenThisPage.has(url)) {
+              seenThisPage.add(url)
+              sendToBackground(url)
+            }
           },
           { once: true },
         )
-        return
+        continue
       }
 
-      isModelImage(img).then((yes) => {
-        if (yes && !seenThisPage.has(img.src)) {
-          seenThisPage.add(img.src)
-          sendToBackground(img.src)
-        }
-      })
+      const url = resolveUrl(img)
+      if (isModelImage(img, url) && !seenThisPage.has(url)) {
+        seenThisPage.add(url)
+        sendToBackground(url)
+      }
     }
   },
   { threshold: 0.3 },
@@ -87,3 +91,36 @@ document.querySelectorAll<HTMLImageElement>('img').forEach(observeImg)
 new MutationObserver(() => {
   document.querySelectorAll<HTMLImageElement>('img:not([data-pose-observed])').forEach(observeImg)
 }).observe(document.documentElement, { childList: true, subtree: true })
+
+function evaluateImgNow(img: HTMLImageElement): void {
+  const url = resolveUrl(img)
+  if (!url || isUnfetchableUrl(url) || isPlaceholderDataUri(url) || seenThisPage.has(url)) return
+
+  if (!img.complete || img.naturalWidth === 0 || img.naturalWidth < MIN_SIZE) {
+    img.addEventListener(
+      'load',
+      () => {
+        const loadedUrl = resolveUrl(img)
+        if (!seenThisPage.has(loadedUrl) && isModelImage(img, loadedUrl)) {
+          seenThisPage.add(loadedUrl)
+          sendToBackground(loadedUrl)
+        }
+      },
+      { once: true },
+    )
+    return
+  }
+
+  if (isModelImage(img, url) && !seenThisPage.has(url)) {
+    seenThisPage.add(url)
+    sendToBackground(url)
+  }
+}
+
+new MutationObserver((mutations) => {
+  for (const mutation of mutations) {
+    if (mutation.type !== 'attributes') continue
+    const img = mutation.target as HTMLImageElement
+    evaluateImgNow(img)
+  }
+}).observe(document.documentElement, { attributes: true, attributeFilter: ['src'], subtree: true })

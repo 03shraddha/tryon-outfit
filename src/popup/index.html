@@ -8,40 +8,68 @@
       * { box-sizing: border-box; margin: 0; padding: 0; }
 
       body {
-        width: 280px;
+        width: 300px;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #0f0f0f;
-        color: #e8e8e8;
+        background: #fff;
+        color: #111;
         padding: 20px;
       }
 
+      /* Header */
       header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 20px;
+        margin-bottom: 18px;
       }
 
-      h1 { font-size: 16px; font-weight: 600; letter-spacing: 0.05em; }
+      h1 {
+        font-size: 15px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        color: #111;
+      }
 
-      .count { font-size: 11px; color: #666; }
+      .looks-badge {
+        font-size: 11px;
+        color: #999;
+        font-weight: 400;
+      }
 
-      /* Toggle */
+      /* Toggle row */
       .toggle-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 20px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid #1e1e1e;
+        padding: 12px 0;
+        border-top: 1px solid #f0f0f0;
+        border-bottom: 1px solid #f0f0f0;
+        margin-bottom: 16px;
       }
 
-      .toggle-label { font-size: 13px; color: #aaa; }
+      .toggle-label {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
+        color: #333;
+        font-weight: 500;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #d0d0d0;
+        flex-shrink: 0;
+      }
+
+      .status-dot.active { background: #22c55e; }
 
       .toggle {
         position: relative;
-        width: 36px;
-        height: 20px;
+        width: 38px;
+        height: 22px;
       }
 
       .toggle input { opacity: 0; width: 0; height: 0; }
@@ -49,8 +77,8 @@
       .slider {
         position: absolute;
         inset: 0;
-        background: #333;
-        border-radius: 20px;
+        background: #e0e0e0;
+        border-radius: 22px;
         cursor: pointer;
         transition: background 0.2s;
       }
@@ -58,48 +86,49 @@
       .slider::before {
         content: '';
         position: absolute;
-        width: 14px;
-        height: 14px;
+        width: 16px;
+        height: 16px;
         left: 3px;
         top: 3px;
-        background: #888;
+        background: #fff;
         border-radius: 50%;
-        transition: transform 0.2s, background 0.2s;
+        transition: transform 0.2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
       }
 
-      input:checked + .slider { background: #1a1a1a; }
-      input:checked + .slider::before { transform: translateX(16px); background: #fff; }
+      input:checked + .slider { background: #111; }
+      input:checked + .slider::before { transform: translateX(16px); }
 
-      /* Selfie section */
+      /* Selfie */
       .section-label {
-        font-size: 11px;
-        font-weight: 500;
-        letter-spacing: 0.08em;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: #555;
-        margin-bottom: 10px;
+        color: #aaa;
+        margin-bottom: 8px;
       }
 
       .selfie-row {
         display: flex;
         align-items: center;
         gap: 12px;
-        margin-bottom: 20px;
         padding-bottom: 16px;
-        border-bottom: 1px solid #1e1e1e;
+        border-bottom: 1px solid #f0f0f0;
+        margin-bottom: 16px;
       }
 
       .selfie-preview {
-        width: 48px;
-        height: 48px;
+        width: 44px;
+        height: 44px;
         border-radius: 50%;
-        object-fit: cover;
-        background: #1e1e1e;
+        background: #f4f4f4;
         flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         overflow: hidden;
+        border: 1.5px solid #e8e8e8;
       }
 
       .selfie-preview img {
@@ -110,110 +139,142 @@
       }
 
       .selfie-placeholder {
-        font-size: 20px;
-        color: #444;
+        font-size: 18px;
+        opacity: 0.35;
       }
 
       .upload-btn {
         flex: 1;
         font-size: 12px;
         padding: 8px 12px;
-        background: #1e1e1e;
-        border: 1px solid #2a2a2a;
-        border-radius: 6px;
-        color: #aaa;
+        background: #f7f7f7;
+        border: 1px solid #e8e8e8;
+        border-radius: 8px;
+        color: #555;
         cursor: pointer;
         text-align: center;
-        transition: background 0.15s;
+        transition: background 0.15s, border-color 0.15s;
+        font-weight: 500;
       }
 
-      .upload-btn:hover { background: #272727; color: #e8e8e8; }
+      .upload-btn:hover { background: #efefef; border-color: #ddd; color: #111; }
 
       input[type="file"] { display: none; }
 
       /* API key */
       .api-row {
-        margin-bottom: 20px;
         padding-bottom: 16px;
-        border-bottom: 1px solid #1e1e1e;
+        border-bottom: 1px solid #f0f0f0;
+        margin-bottom: 16px;
       }
 
-      input[type="text"], input[type="password"] {
+      .api-input-wrap {
+        position: relative;
+      }
+
+      input[type="password"], input[type="text"] {
         width: 100%;
-        padding: 8px 10px;
-        background: #1e1e1e;
-        border: 1px solid #2a2a2a;
-        border-radius: 6px;
-        color: #e8e8e8;
+        padding: 8px 32px 8px 10px;
+        background: #f7f7f7;
+        border: 1px solid #e8e8e8;
+        border-radius: 8px;
+        color: #111;
         font-size: 12px;
-        font-family: 'SF Mono', monospace;
+        font-family: 'SF Mono', 'Menlo', monospace;
         outline: none;
-        transition: border-color 0.15s;
+        transition: border-color 0.15s, background 0.15s;
       }
 
-      input[type="text"]:focus, input[type="password"]:focus {
-        border-color: #444;
+      input[type="password"]:focus, input[type="text"]:focus {
+        border-color: #bbb;
+        background: #fff;
       }
 
-      input::placeholder { color: #444; }
+      input::placeholder { color: #bbb; }
+
+      .reveal-btn {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 2px;
+        color: #bbb;
+        font-size: 13px;
+        line-height: 1;
+        transition: color 0.15s;
+      }
+
+      .reveal-btn:hover { color: #666; }
 
       /* Daily limit */
       .limit-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 20px;
         padding-bottom: 16px;
-        border-bottom: 1px solid #1e1e1e;
+        border-bottom: 1px solid #f0f0f0;
+        margin-bottom: 16px;
+      }
+
+      .limit-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .limit-used {
+        font-size: 11px;
+        color: #aaa;
+      }
+
+      .limit-input-wrap {
+        display: flex;
+        align-items: center;
+        gap: 4px;
       }
 
       .limit-input {
-        width: 60px;
+        width: 52px;
         text-align: center;
+        padding: 6px 8px !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        font-size: 13px !important;
       }
 
-      .limit-used { font-size: 11px; color: #555; }
-
-      /* Dressing room button */
+      /* Open button */
       .open-btn {
         width: 100%;
-        padding: 10px;
-        background: #e8e8e8;
-        color: #0f0f0f;
+        padding: 11px;
+        background: #111;
+        color: #fff;
         border: none;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         transition: background 0.15s;
+        letter-spacing: 0.01em;
       }
 
-      .open-btn:hover { background: #fff; }
-      .open-btn:disabled { background: #1e1e1e; color: #444; cursor: default; }
+      .open-btn:hover { background: #333; }
+      .open-btn:disabled { background: #f0f0f0; color: #bbb; cursor: default; }
 
-      .looks-count {
+      .bottom-count {
         text-align: center;
         font-size: 11px;
-        color: #555;
+        color: #bbb;
         margin-top: 8px;
+        min-height: 16px;
       }
-
-      .status-dot {
-        display: inline-block;
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #333;
-        margin-right: 6px;
-      }
-
-      .status-dot.active { background: #4caf50; }
     </style>
   </head>
   <body>
     <header>
       <h1>POSE</h1>
-      <span class="count" id="looksCount">— looks</span>
+      <span class="looks-badge" id="looksCount">— looks</span>
     </header>
 
     <div class="toggle-row">
@@ -226,6 +287,7 @@
       </label>
     </div>
 
+    <div class="section-label">Your photo</div>
     <div class="selfie-row">
       <div class="selfie-preview" id="selfiePreview">
         <img id="selfieImg" alt="your face" />
@@ -239,19 +301,24 @@
 
     <div class="api-row">
       <div class="section-label">OpenAI API Key</div>
-      <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off" />
+      <div class="api-input-wrap">
+        <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off" />
+        <button class="reveal-btn" id="revealBtn" title="Show/hide key">👁</button>
+      </div>
     </div>
 
     <div class="limit-row">
-      <span class="section-label">Daily limit</span>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span class="limit-used" id="limitUsed">0 used</span>
+      <div class="limit-left">
+        <div class="section-label">Daily limit</div>
+        <div class="limit-used" id="limitUsed">0 used today</div>
+      </div>
+      <div class="limit-input-wrap">
         <input type="text" id="limitInput" class="limit-input" value="50" />
       </div>
     </div>
 
     <button class="open-btn" id="openDressingRoom">Open Dressing Room</button>
-    <div class="looks-count" id="bottomCount"></div>
+    <div class="bottom-count" id="bottomCount"></div>
 
     <script type="module" src="./popup.ts"></script>
   </body>
