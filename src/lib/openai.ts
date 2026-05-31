@@ -7,18 +7,27 @@ function base64ToBlob(b64: string, mime = 'image/png'): Blob {
 
 export async function swapModel(
   productBlob: Blob,
-  selfieBase64: string,
+  selfieBase64s: string[],
   apiKey: string,
 ): Promise<Blob> {
   const form = new FormData()
   form.append('model', 'gpt-image-1')
   form.append('image[]', productBlob, 'product.png')
-  form.append('image[]', base64ToBlob(selfieBase64), 'reference.png')
+  selfieBase64s.forEach((b64, i) => {
+    form.append('image[]', base64ToBlob(b64), `reference-${i + 1}.png`)
+  })
+
+  const refCount = selfieBase64s.length
+  const refDesc =
+    refCount === 1
+      ? 'The second image is a reference photo of a person.'
+      : `Images 2–${refCount + 1} are reference photos of the same person from different angles.`
+
   form.append(
     'prompt',
     'The first image is a fashion product photo showing a model wearing clothing. ' +
-      'The second image is a reference photo of a person. ' +
-      'Replace the fashion model in the first image with the person from the second image. ' +
+      `${refDesc} ` +
+      'Replace the fashion model in the first image with this person. ' +
       'Preserve exactly: the clothing being worn, the body pose, the lighting, shadows, and background. ' +
       'The result should look like the reference person is wearing that exact outfit in that exact scene. ' +
       'Maintain photorealistic quality consistent with the original brand photography.',

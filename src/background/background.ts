@@ -25,9 +25,10 @@ async function incrementDailyCount(): Promise<void> {
 
 async function processImage(item: QueueItem): Promise<void> {
   try {
-    const stored = await chrome.storage.local.get(['selfie', 'apiKey', 'enabled', 'dailyLimit'])
-    const { selfie, apiKey, enabled } = stored as {
-      selfie?: string
+    const stored = await chrome.storage.local.get(['selfie1', 'selfie2', 'apiKey', 'enabled', 'dailyLimit'])
+    const { selfie1, selfie2, apiKey, enabled } = stored as {
+      selfie1?: string
+      selfie2?: string
       apiKey?: string
       enabled?: boolean
       dailyLimit?: number
@@ -35,7 +36,9 @@ async function processImage(item: QueueItem): Promise<void> {
     const dailyLimit = stored.dailyLimit as number | undefined
 
     if (enabled === false) return
-    if (!selfie || !apiKey) return
+    if (!selfie1 || !apiKey) return
+
+    const selfies = [selfie1, ...(selfie2 ? [selfie2] : [])]
 
     const limit = dailyLimit ?? DAILY_LIMIT_DEFAULT
     const used = await getDailyCount()
@@ -71,7 +74,7 @@ async function processImage(item: QueueItem): Promise<void> {
       throw new Error(`Product image too small to process (${productBlob.size} bytes)`)
     }
 
-    const processedBlob = await swapModel(productBlob, selfie, apiKey)
+    const processedBlob = await swapModel(productBlob, selfies, apiKey)
 
     await updateLook(item.id, { status: 'done', processedBlob })
     await incrementDailyCount()

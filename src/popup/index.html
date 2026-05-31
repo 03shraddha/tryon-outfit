@@ -109,27 +109,46 @@
         margin-bottom: 8px;
       }
 
-      .selfie-row {
+      .photo-hint {
+        font-size: 10px;
+        font-weight: 400;
+        letter-spacing: 0;
+        text-transform: none;
+        color: #ccc;
+        margin-left: 4px;
+      }
+
+      .selfie-slots {
         display: flex;
-        align-items: center;
-        gap: 12px;
+        gap: 10px;
         padding-bottom: 16px;
         border-bottom: 1px solid #f0f0f0;
         margin-bottom: 16px;
       }
 
+      .selfie-slot {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
+
       .selfie-preview {
-        width: 44px;
-        height: 44px;
+        width: 52px;
+        height: 52px;
         border-radius: 50%;
         background: #f4f4f4;
-        flex-shrink: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         overflow: hidden;
         border: 1.5px solid #e8e8e8;
+        transition: border-color 0.15s;
       }
+
+      .selfie-slot:hover .selfie-preview { border-color: #bbb; }
 
       .selfie-preview img {
         width: 100%;
@@ -139,25 +158,15 @@
       }
 
       .selfie-placeholder {
-        font-size: 18px;
-        opacity: 0.35;
+        font-size: 20px;
+        opacity: 0.3;
       }
 
-      .upload-btn {
-        flex: 1;
-        font-size: 12px;
-        padding: 8px 12px;
-        background: #f7f7f7;
-        border: 1px solid #e8e8e8;
-        border-radius: 8px;
-        color: #555;
-        cursor: pointer;
+      .slot-label {
+        font-size: 11px;
+        color: #bbb;
         text-align: center;
-        transition: background 0.15s, border-color 0.15s;
-        font-weight: 500;
       }
-
-      .upload-btn:hover { background: #efefef; border-color: #ddd; color: #111; }
 
       input[type="file"] { display: none; }
 
@@ -287,16 +296,25 @@
       </label>
     </div>
 
-    <div class="section-label">Your photo</div>
-    <div class="selfie-row">
-      <div class="selfie-preview" id="selfiePreview">
-        <img id="selfieImg" alt="your face" />
-        <span class="selfie-placeholder" id="selfiePlaceholder">👤</span>
-      </div>
-      <label class="upload-btn" for="selfieInput" id="uploadLabel">
-        Upload your photo
+    <div class="section-label">Your photos <span class="photo-hint">2 angles = better results</span></div>
+    <div class="selfie-slots">
+      <label class="selfie-slot" for="selfieInput1">
+        <div class="selfie-preview" id="selfiePreview1">
+          <img id="selfieImg1" alt="photo 1" />
+          <span class="selfie-placeholder" id="selfiePlaceholder1">👤</span>
+        </div>
+        <div class="slot-label" id="slotLabel1">Photo 1</div>
       </label>
-      <input type="file" id="selfieInput" accept="image/*" />
+      <input type="file" id="selfieInput1" accept="image/*" />
+
+      <label class="selfie-slot" for="selfieInput2">
+        <div class="selfie-preview" id="selfiePreview2">
+          <img id="selfieImg2" alt="photo 2" />
+          <span class="selfie-placeholder" id="selfiePlaceholder2">＋</span>
+        </div>
+        <div class="slot-label" id="slotLabel2">Photo 2</div>
+      </label>
+      <input type="file" id="selfieInput2" accept="image/*" />
     </div>
 
     <div class="api-row">

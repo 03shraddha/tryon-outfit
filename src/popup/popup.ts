@@ -2,10 +2,14 @@ import { getLookCount, getDomains } from '../lib/db.ts'
 
 const enabledToggle = document.getElementById('enabledToggle') as HTMLInputElement
 const statusDot = document.getElementById('statusDot') as HTMLSpanElement
-const selfieImg = document.getElementById('selfieImg') as HTMLImageElement
-const selfiePlaceholder = document.getElementById('selfiePlaceholder') as HTMLSpanElement
-const uploadLabel = document.getElementById('uploadLabel') as HTMLLabelElement
-const selfieInput = document.getElementById('selfieInput') as HTMLInputElement
+const selfieImg1 = document.getElementById('selfieImg1') as HTMLImageElement
+const selfieImg2 = document.getElementById('selfieImg2') as HTMLImageElement
+const selfiePlaceholder1 = document.getElementById('selfiePlaceholder1') as HTMLSpanElement
+const selfiePlaceholder2 = document.getElementById('selfiePlaceholder2') as HTMLSpanElement
+const slotLabel1 = document.getElementById('slotLabel1') as HTMLDivElement
+const slotLabel2 = document.getElementById('slotLabel2') as HTMLDivElement
+const selfieInput1 = document.getElementById('selfieInput1') as HTMLInputElement
+const selfieInput2 = document.getElementById('selfieInput2') as HTMLInputElement
 const apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement
 const limitInput = document.getElementById('limitInput') as HTMLInputElement
 const limitUsed = document.getElementById('limitUsed') as HTMLSpanElement
@@ -14,17 +18,23 @@ const bottomCount = document.getElementById('bottomCount') as HTMLDivElement
 const openBtn = document.getElementById('openDressingRoom') as HTMLButtonElement
 const revealBtn = document.getElementById('revealBtn') as HTMLButtonElement
 
-function showSelfie(base64: string): void {
-  selfieImg.src = base64
-  selfieImg.style.display = 'block'
-  selfiePlaceholder.style.display = 'none'
-  uploadLabel.textContent = 'Change photo'
+function showSelfieSlot(
+  img: HTMLImageElement,
+  placeholder: HTMLSpanElement,
+  label: HTMLDivElement,
+  base64: string,
+): void {
+  img.src = base64
+  img.style.display = 'block'
+  placeholder.style.display = 'none'
+  label.textContent = 'Change'
 }
 
 async function loadState(): Promise<void> {
-  const stored = await chrome.storage.local.get(['selfie', 'apiKey', 'enabled', 'dailyLimit', 'dailyUsage'])
-  const { selfie, apiKey, enabled, dailyLimit, dailyUsage } = stored as {
-    selfie?: string
+  const stored = await chrome.storage.local.get(['selfie1', 'selfie2', 'apiKey', 'enabled', 'dailyLimit', 'dailyUsage'])
+  const { selfie1, selfie2, apiKey, enabled, dailyLimit, dailyUsage } = stored as {
+    selfie1?: string
+    selfie2?: string
     apiKey?: string
     enabled?: boolean
     dailyLimit?: number
@@ -34,7 +44,8 @@ async function loadState(): Promise<void> {
   enabledToggle.checked = enabled !== false
   statusDot.classList.toggle('active', enabled !== false)
 
-  if (selfie) showSelfie(selfie)
+  if (selfie1) showSelfieSlot(selfieImg1, selfiePlaceholder1, slotLabel1, selfie1)
+  if (selfie2) showSelfieSlot(selfieImg2, selfiePlaceholder2, slotLabel2, selfie2)
   if (apiKey) apiKeyInput.value = apiKey
   if (dailyLimit) limitInput.value = String(dailyLimit)
 
@@ -58,18 +69,28 @@ enabledToggle.addEventListener('change', async () => {
   await chrome.storage.local.set({ enabled: val })
 })
 
-selfieInput.addEventListener('change', async () => {
-  const file = selfieInput.files?.[0]
-  if (!file) return
+function wireFileInput(
+  input: HTMLInputElement,
+  storageKey: string,
+  img: HTMLImageElement,
+  placeholder: HTMLSpanElement,
+  label: HTMLDivElement,
+): void {
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const base64 = e.target?.result as string
+      await chrome.storage.local.set({ [storageKey]: base64 })
+      showSelfieSlot(img, placeholder, label, base64)
+    }
+    reader.readAsDataURL(file)
+  })
+}
 
-  const reader = new FileReader()
-  reader.onload = async (e) => {
-    const base64 = e.target?.result as string
-    await chrome.storage.local.set({ selfie: base64 })
-    showSelfie(base64)
-  }
-  reader.readAsDataURL(file)
-})
+wireFileInput(selfieInput1, 'selfie1', selfieImg1, selfiePlaceholder1, slotLabel1)
+wireFileInput(selfieInput2, 'selfie2', selfieImg2, selfiePlaceholder2, slotLabel2)
 
 let apiKeyTimer: ReturnType<typeof setTimeout>
 apiKeyInput.addEventListener('input', () => {
