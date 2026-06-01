@@ -6,7 +6,7 @@ import type { MessageToBackground, QueueItem } from '../types.ts'
 const queue: QueueItem[] = []
 const queuedUrls = new Set<string>()
 let inflight = 0
-const MAX_CONCURRENT = 2
+const MAX_CONCURRENT = 1
 const DAILY_LIMIT_DEFAULT = 50
 
 async function getDailyCount(): Promise<number> {
@@ -25,15 +25,24 @@ async function incrementDailyCount(): Promise<void> {
 
 async function processImage(item: QueueItem): Promise<void> {
   try {
-    const stored = await chrome.storage.local.get(['selfie1', 'selfie2', 'apiKey', 'enabled', 'dailyLimit'])
-    const { selfie1, selfie2, apiKey, enabled } = stored as {
+    const stored = await chrome.storage.local.get(['selfie1', 'selfie2', 'selfie', 'apiKey', 'enabled', 'dailyLimit'])
+    const raw = stored as {
       selfie1?: string
       selfie2?: string
+      selfie?: string
       apiKey?: string
       enabled?: boolean
       dailyLimit?: number
     }
-    const dailyLimit = stored.dailyLimit as number | undefined
+    const dailyLimit = raw.dailyLimit
+
+    // Migrate old single-selfie key to selfie1
+    if (!raw.selfie1 && raw.selfie) {
+      await chrome.storage.local.set({ selfie1: raw.selfie })
+      raw.selfie1 = raw.selfie
+    }
+
+    const { selfie1, selfie2, apiKey, enabled } = raw
 
     if (enabled === false) return
     if (!selfie1 || !apiKey) return
@@ -99,7 +108,19 @@ function processNext(): void {
   }
 }
 
-chrome.runtime.onMessage.addListener((message: MessageToBackground, _sender, _sendResponse) => {
+chrome.runtime.onMessage.addListener((message: MessageToBackground, _sender, sendResponse) => {
+  if (message.type === 'CLEAR_QUEUE') {
+    queue.length = 0
+    queuedUrls.clear()
+    sendResponse({ ok: true })
+    return
+  }
+
+  if (message.type === 'GET_QUEUE_SIZE') {
+    sendResponse({ size: queue.length + inflight })
+    return
+  }
+
   if (message.type !== 'QUEUE_IMAGE') return
 
   const { src, domain } = message

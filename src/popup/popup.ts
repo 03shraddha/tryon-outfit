@@ -16,6 +16,7 @@ const limitUsed = document.getElementById('limitUsed') as HTMLSpanElement
 const looksCount = document.getElementById('looksCount') as HTMLSpanElement
 const bottomCount = document.getElementById('bottomCount') as HTMLDivElement
 const openBtn = document.getElementById('openDressingRoom') as HTMLButtonElement
+const stopBtn = document.getElementById('stopBtn') as HTMLButtonElement
 const revealBtn = document.getElementById('revealBtn') as HTMLButtonElement
 
 function showSelfieSlot(
@@ -30,16 +31,36 @@ function showSelfieSlot(
   label.textContent = 'Change'
 }
 
+async function refreshQueueStatus(): Promise<void> {
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'GET_QUEUE_SIZE' }) as { size: number }
+    const size = res?.size ?? 0
+    stopBtn.disabled = size === 0
+    stopBtn.textContent = size > 0 ? `Stop (${size})` : 'Stop'
+  } catch {
+    stopBtn.disabled = true
+  }
+}
+
 async function loadState(): Promise<void> {
-  const stored = await chrome.storage.local.get(['selfie1', 'selfie2', 'apiKey', 'enabled', 'dailyLimit', 'dailyUsage'])
-  const { selfie1, selfie2, apiKey, enabled, dailyLimit, dailyUsage } = stored as {
+  const stored = await chrome.storage.local.get(['selfie1', 'selfie2', 'selfie', 'apiKey', 'enabled', 'dailyLimit', 'dailyUsage'])
+  const raw = stored as {
     selfie1?: string
     selfie2?: string
+    selfie?: string
     apiKey?: string
     enabled?: boolean
     dailyLimit?: number
     dailyUsage?: { date: string; count: number }
   }
+
+  // Migrate old single-selfie key
+  if (!raw.selfie1 && raw.selfie) {
+    await chrome.storage.local.set({ selfie1: raw.selfie })
+    raw.selfie1 = raw.selfie
+  }
+
+  const { selfie1, selfie2, apiKey, enabled, dailyLimit, dailyUsage } = raw
 
   enabledToggle.checked = enabled !== false
   statusDot.classList.toggle('active', enabled !== false)
@@ -61,6 +82,8 @@ async function loadState(): Promise<void> {
   if (domains.length > 0) {
     bottomCount.textContent = `${count} looks across ${domains.length} brand${domains.length > 1 ? 's' : ''}`
   }
+
+  refreshQueueStatus()
 }
 
 enabledToggle.addEventListener('change', async () => {
@@ -117,9 +140,18 @@ revealBtn.addEventListener('click', () => {
   revealBtn.textContent = isPassword ? '🙈' : '👁'
 })
 
+stopBtn.addEventListener('click', async () => {
+  await chrome.runtime.sendMessage({ type: 'CLEAR_QUEUE' })
+  stopBtn.disabled = true
+  stopBtn.textContent = 'Stop'
+})
+
 openBtn.addEventListener('click', () => {
   const url = chrome.runtime.getURL('src/dressing-room/index.html')
   chrome.tabs.create({ url })
 })
+
+// Refresh queue size every 2s while popup is open
+setInterval(refreshQueueStatus, 2000)
 
 loadState()

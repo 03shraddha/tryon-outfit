@@ -16,6 +16,9 @@ export interface QueueItem {
 
 export type MessageToBackground =
   | { type: 'QUEUE_IMAGE'; src: string; domain: string }
+  | { type: 'CLEAR_QUEUE' }
+  | { type: 'GET_QUEUE_SIZE' }
 
 export type MessageFromBackground =
+  | { type: 'QUEUE_SIZE'; size: number }
   | { type: 'BADGE_UPDATE'; count: number }

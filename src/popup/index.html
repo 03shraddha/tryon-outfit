@@ -253,9 +253,14 @@
         font-size: 13px !important;
       }
 
-      /* Open button */
+      /* Buttons */
+      .btn-row {
+        display: flex;
+        gap: 8px;
+      }
+
       .open-btn {
-        width: 100%;
+        flex: 1;
         padding: 11px;
         background: #111;
         color: #fff;
@@ -270,6 +275,22 @@
 
       .open-btn:hover { background: #333; }
       .open-btn:disabled { background: #f0f0f0; color: #bbb; cursor: default; }
+
+      .stop-btn {
+        padding: 11px 14px;
+        background: #fff;
+        color: #e53e3e;
+        border: 1px solid #fca5a5;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+        white-space: nowrap;
+      }
+
+      .stop-btn:hover { background: #fff5f5; border-color: #f87171; }
+      .stop-btn:disabled { color: #ddd; border-color: #eee; cursor: default; }
 
       .bottom-count {
         text-align: center;
@@ -335,7 +356,10 @@
       </div>
     </div>
 
-    <button class="open-btn" id="openDressingRoom">Open Dressing Room</button>
+    <div class="btn-row">
+      <button class="open-btn" id="openDressingRoom">Open Dressing Room</button>
+      <button class="stop-btn" id="stopBtn" disabled>Stop</button>
+    </div>
     <div class="bottom-count" id="bottomCount"></div>
 
     <script type="module" src="./popup.ts"></script>
