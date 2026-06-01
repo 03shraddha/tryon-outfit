@@ -9,8 +9,8 @@
 
       body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #0c0c0c;
-        color: #e8e8e8;
+        background: #fafafa;
+        color: #111;
         min-height: 100vh;
       }
 
@@ -19,32 +19,47 @@
         display: flex;
         align-items: baseline;
         justify-content: space-between;
-        padding: 32px 40px 0;
-        border-bottom: 1px solid #1a1a1a;
-        padding-bottom: 24px;
+        padding: 32px 40px 24px;
+        border-bottom: 1px solid #f0f0f0;
       }
 
       .header-left h1 {
         font-size: 13px;
         font-weight: 600;
         letter-spacing: 0.1em;
-        color: #e8e8e8;
+        color: #111;
         margin-bottom: 2px;
       }
 
       .total-count {
         font-size: 11px;
-        color: #444;
+        color: #bbb;
       }
+
+      .clear-btn {
+        background: none;
+        border: 1px solid #e8e8e8;
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 11px;
+        color: #aaa;
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s;
+        white-space: nowrap;
+        align-self: center;
+      }
+
+      .clear-btn:hover { border-color: #f87171; color: #e53e3e; }
 
       /* Tabs */
       .tabs {
         display: flex;
         gap: 0;
         padding: 0 40px;
-        border-bottom: 1px solid #1a1a1a;
+        border-bottom: 1px solid #f0f0f0;
         overflow-x: auto;
         scrollbar-width: none;
+        background: #fff;
       }
 
       .tabs::-webkit-scrollbar { display: none; }
@@ -52,7 +67,7 @@
       .tab {
         padding: 14px 16px;
         font-size: 12px;
-        color: #555;
+        color: #aaa;
         cursor: pointer;
         border-bottom: 1px solid transparent;
         white-space: nowrap;
@@ -60,20 +75,20 @@
         user-select: none;
       }
 
-      .tab:hover { color: #aaa; }
+      .tab:hover { color: #555; }
 
       .tab.active {
-        color: #e8e8e8;
-        border-bottom-color: #e8e8e8;
+        color: #111;
+        border-bottom-color: #111;
       }
 
       .tab .tab-count {
         margin-left: 6px;
         font-size: 10px;
-        color: #444;
+        color: #ccc;
       }
 
-      .tab.active .tab-count { color: #777; }
+      .tab.active .tab-count { color: #999; }
 
       /* Grid */
       .grid {
@@ -88,7 +103,7 @@
         position: relative;
         aspect-ratio: 3/4;
         overflow: hidden;
-        background: #111;
+        background: #efefef;
         cursor: pointer;
       }
 
@@ -113,8 +128,8 @@
         bottom: 10px;
         left: 10px;
         font-size: 10px;
-        color: #888;
-        background: rgba(0,0,0,0.6);
+        color: #666;
+        background: rgba(255,255,255,0.85);
         padding: 3px 7px;
         border-radius: 3px;
         z-index: 3;
@@ -129,16 +144,17 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: #111;
+        background: #f5f5f5;
         z-index: 4;
-        gap: 10px;
+        gap: 8px;
+        padding: 0 16px;
       }
 
       .spinner {
         width: 20px;
         height: 20px;
-        border: 2px solid #222;
-        border-top-color: #666;
+        border: 2px solid #e0e0e0;
+        border-top-color: #999;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
       }
@@ -147,13 +163,21 @@
 
       .status-label {
         font-size: 10px;
-        color: #444;
+        color: #bbb;
         letter-spacing: 0.06em;
       }
 
       .error-icon {
         font-size: 18px;
-        color: #444;
+        color: #ccc;
+      }
+
+      .error-msg {
+        font-size: 9px;
+        color: #ccc;
+        text-align: center;
+        line-height: 1.4;
+        word-break: break-word;
       }
 
       /* Empty state */
@@ -161,14 +185,14 @@
         grid-column: 1 / -1;
         text-align: center;
         padding: 80px 40px;
-        color: #333;
+        color: #ccc;
       }
 
       .empty h2 {
         font-size: 16px;
         font-weight: 500;
         margin-bottom: 8px;
-        color: #444;
+        color: #bbb;
       }
 
       .empty p {
@@ -179,7 +203,7 @@
       /* Hover hint */
       .hover-hint {
         font-size: 11px;
-        color: #333;
+        color: #ccc;
         padding: 16px 40px;
         text-align: right;
       }
@@ -193,6 +217,7 @@
         <h1>POSE · DRESSING ROOM</h1>
         <div class="total-count" id="totalCount">Loading…</div>
       </div>
+      <button class="clear-btn" id="clearFailed">Clear Failed</button>
     </div>
 
     <div class="tabs" id="tabs"></div>

@@ -22,3 +22,6 @@ export type MessageToBackground =
 export type MessageFromBackground =
   | { type: 'QUEUE_SIZE'; size: number }
   | { type: 'BADGE_UPDATE'; count: number }
+
+export type MessageToContent =
+  | { type: 'START_SCAN' }

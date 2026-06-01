@@ -259,7 +259,7 @@
         gap: 8px;
       }
 
-      .open-btn {
+      .scan-btn {
         flex: 1;
         padding: 11px;
         background: #111;
@@ -273,8 +273,8 @@
         letter-spacing: 0.01em;
       }
 
-      .open-btn:hover { background: #333; }
-      .open-btn:disabled { background: #f0f0f0; color: #bbb; cursor: default; }
+      .scan-btn:hover { background: #333; }
+      .scan-btn:disabled { background: #f0f0f0; color: #bbb; cursor: default; }
 
       .stop-btn {
         padding: 11px 14px;
@@ -292,11 +292,29 @@
       .stop-btn:hover { background: #fff5f5; border-color: #f87171; }
       .stop-btn:disabled { color: #ddd; border-color: #eee; cursor: default; }
 
+      .secondary-row {
+        display: flex;
+        justify-content: center;
+        margin-top: 8px;
+      }
+
+      .view-btn {
+        background: none;
+        border: none;
+        font-size: 11px;
+        color: #bbb;
+        cursor: pointer;
+        padding: 2px 4px;
+        transition: color 0.15s;
+      }
+
+      .view-btn:hover { color: #666; }
+
       .bottom-count {
         text-align: center;
         font-size: 11px;
         color: #bbb;
-        margin-top: 8px;
+        margin-top: 4px;
         min-height: 16px;
       }
     </style>
@@ -357,8 +375,11 @@
     </div>
 
     <div class="btn-row">
-      <button class="open-btn" id="openDressingRoom">Open Dressing Room</button>
+      <button class="scan-btn" id="scanBtn">Scan This Page</button>
       <button class="stop-btn" id="stopBtn" disabled>Stop</button>
+    </div>
+    <div class="secondary-row">
+      <button class="view-btn" id="openDressingRoom">View Dressing Room →</button>
     </div>
     <div class="bottom-count" id="bottomCount"></div>
 

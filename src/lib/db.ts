@@ -57,6 +57,16 @@ export async function getDomains(): Promise<string[]> {
   return [...new Set(all.map((l) => l.domain))]
 }
 
+export async function clearFailedLooks(): Promise<void> {
+  const db = await getDb()
+  const all = (await db.getAll(STORE)) as Look[]
+  const tx = db.transaction(STORE, 'readwrite')
+  for (const look of all) {
+    if (look.status === 'error') await tx.store.delete(look.id)
+  }
+  await tx.done
+}
+
 // Only used in tests — clears all records without dropping the database
 export async function _clearAll(): Promise<void> {
   const db = await getDb()

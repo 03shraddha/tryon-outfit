@@ -15,6 +15,7 @@ const limitInput = document.getElementById('limitInput') as HTMLInputElement
 const limitUsed = document.getElementById('limitUsed') as HTMLSpanElement
 const looksCount = document.getElementById('looksCount') as HTMLSpanElement
 const bottomCount = document.getElementById('bottomCount') as HTMLDivElement
+const scanBtn = document.getElementById('scanBtn') as HTMLButtonElement
 const openBtn = document.getElementById('openDressingRoom') as HTMLButtonElement
 const stopBtn = document.getElementById('stopBtn') as HTMLButtonElement
 const revealBtn = document.getElementById('revealBtn') as HTMLButtonElement
@@ -144,6 +145,25 @@ stopBtn.addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ type: 'CLEAR_QUEUE' })
   stopBtn.disabled = true
   stopBtn.textContent = 'Stop'
+})
+
+scanBtn.addEventListener('click', async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.id) return
+  try {
+    await chrome.tabs.sendMessage(tab.id, { type: 'START_SCAN' })
+    scanBtn.textContent = 'Scanning…'
+    scanBtn.disabled = true
+    setTimeout(() => {
+      scanBtn.textContent = 'Scan This Page'
+      scanBtn.disabled = false
+    }, 2000)
+  } catch {
+    scanBtn.textContent = 'No page to scan'
+    setTimeout(() => {
+      scanBtn.textContent = 'Scan This Page'
+    }, 2000)
+  }
 })
 
 openBtn.addEventListener('click', () => {

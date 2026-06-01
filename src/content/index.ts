@@ -1,4 +1,4 @@
-import type { MessageToBackground } from '../types.ts'
+import type { MessageToBackground, MessageToContent } from '../types.ts'
 import { isUnfetchableUrl, isPlaceholderDataUri } from '../lib/imageUrl.ts'
 
 const MIN_SIZE = 300
@@ -31,8 +31,6 @@ function isModelImage(img: HTMLImageElement, url: string): boolean {
 }
 
 function sendToBackground(src: string): void {
-  // Reject data: URIs (placeholders, inlined images) and blob: URLs
-  // (local object URLs that are not accessible from the service worker).
   if (isUnfetchableUrl(src)) return
 
   const message: MessageToBackground = {
@@ -86,12 +84,6 @@ function observeImg(img: HTMLImageElement): void {
   intersectionObserver.observe(img)
 }
 
-document.querySelectorAll<HTMLImageElement>('img').forEach(observeImg)
-
-new MutationObserver(() => {
-  document.querySelectorAll<HTMLImageElement>('img:not([data-pose-observed])').forEach(observeImg)
-}).observe(document.documentElement, { childList: true, subtree: true })
-
 function evaluateImgNow(img: HTMLImageElement): void {
   const url = resolveUrl(img)
   if (!url || isUnfetchableUrl(url) || isPlaceholderDataUri(url) || seenThisPage.has(url)) return
@@ -117,10 +109,25 @@ function evaluateImgNow(img: HTMLImageElement): void {
   }
 }
 
-new MutationObserver((mutations) => {
-  for (const mutation of mutations) {
-    if (mutation.type !== 'attributes') continue
-    const img = mutation.target as HTMLImageElement
-    evaluateImgNow(img)
-  }
-}).observe(document.documentElement, { attributes: true, attributeFilter: ['src'], subtree: true })
+let scanStarted = false
+
+// Only start scanning when popup explicitly requests it for this tab
+chrome.runtime.onMessage.addListener((message: MessageToContent) => {
+  if (message.type !== 'START_SCAN') return
+  if (scanStarted) return
+  scanStarted = true
+
+  document.querySelectorAll<HTMLImageElement>('img').forEach(observeImg)
+
+  new MutationObserver(() => {
+    document.querySelectorAll<HTMLImageElement>('img:not([data-pose-observed])').forEach(observeImg)
+  }).observe(document.documentElement, { childList: true, subtree: true })
+
+  new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type !== 'attributes') continue
+      const img = mutation.target as HTMLImageElement
+      evaluateImgNow(img)
+    }
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['src'], subtree: true })
+})

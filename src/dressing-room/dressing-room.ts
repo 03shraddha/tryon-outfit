@@ -1,10 +1,11 @@
-import { getAllLooks } from '../lib/db.ts'
+import { getAllLooks, clearFailedLooks } from '../lib/db.ts'
 import type { Look } from '../types.ts'
 
 const grid = document.getElementById('grid') as HTMLDivElement
 const tabsEl = document.getElementById('tabs') as HTMLDivElement
 const totalCount = document.getElementById('totalCount') as HTMLDivElement
 const hoverHint = document.getElementById('hoverHint') as HTMLDivElement
+const clearFailedBtn = document.getElementById('clearFailed') as HTMLButtonElement
 
 let currentDomain = 'all'
 let allLooks: Look[] = []
@@ -33,9 +34,11 @@ function renderCard(look: Look): HTMLDivElement {
   } else if (look.status === 'error') {
     const overlay = document.createElement('div')
     overlay.className = 'status-overlay'
+    const errText = look.errorMessage ? look.errorMessage.slice(0, 100) : ''
     overlay.innerHTML = `
       <span class="error-icon">✕</span>
       <span class="status-label">Failed</span>
+      ${errText ? `<span class="error-msg">${errText}</span>` : ''}
     `
     const original = document.createElement('img')
     original.src = look.originalSrc
@@ -136,6 +139,15 @@ async function refresh(): Promise<void> {
   allLooks = await getAllLooks()
   render()
 }
+
+clearFailedBtn.addEventListener('click', async () => {
+  clearFailedBtn.textContent = 'Clearing…'
+  clearFailedBtn.disabled = true
+  await clearFailedLooks()
+  await refresh()
+  clearFailedBtn.textContent = 'Clear Failed'
+  clearFailedBtn.disabled = false
+})
 
 refresh()
 
