@@ -112,8 +112,9 @@ function evaluateImgNow(img: HTMLImageElement): void {
 let scanStarted = false
 
 // Only start scanning when popup explicitly requests it for this tab
-chrome.runtime.onMessage.addListener((message: MessageToContent) => {
+chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendResponse) => {
   if (message.type !== 'START_SCAN') return
+  sendResponse({ ok: true })  // must respond or popup's await rejects
   if (scanStarted) return
   scanStarted = true
 
