@@ -36,9 +36,10 @@ async function processImage(item: QueueItem): Promise<void> {
     }
     const dailyLimit = raw.dailyLimit
 
-    // Migrate old single-selfie key to selfie1
+    // Migrate old single-selfie key to selfie1 and remove the old key
     if (!raw.selfie1 && raw.selfie) {
       await chrome.storage.local.set({ selfie1: raw.selfie })
+      await chrome.storage.local.remove('selfie')
       raw.selfie1 = raw.selfie
     }
 

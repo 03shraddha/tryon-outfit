@@ -1,5 +1,12 @@
-function base64ToBlob(b64: string, mime = 'image/png'): Blob {
-  const binary = atob(b64)
+function base64ToBlob(b64: string, defaultMime = 'image/jpeg'): Blob {
+  let mime = defaultMime
+  let data = b64
+  if (b64.startsWith('data:')) {
+    const comma = b64.indexOf(',')
+    mime = b64.slice(5, b64.indexOf(';'))
+    data = b64.slice(comma + 1)
+  }
+  const binary = atob(data)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
   return new Blob([bytes], { type: mime })

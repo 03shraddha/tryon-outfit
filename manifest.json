@@ -3,7 +3,7 @@
   "name": "Pose",
   "version": "0.1.0",
   "description": "See any clothing model replaced with your face as you browse.",
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "tabs", "scripting"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background/background.ts",

@@ -55,9 +55,10 @@ async function loadState(): Promise<void> {
     dailyUsage?: { date: string; count: number }
   }
 
-  // Migrate old single-selfie key
+  // Migrate old single-selfie key and remove it to free storage
   if (!raw.selfie1 && raw.selfie) {
     await chrome.storage.local.set({ selfie1: raw.selfie })
+    await chrome.storage.local.remove('selfie')
     raw.selfie1 = raw.selfie
   }
 
@@ -93,6 +94,25 @@ enabledToggle.addEventListener('change', async () => {
   await chrome.storage.local.set({ enabled: val })
 })
 
+async function compressToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      const MAX = 768
+      const scale = Math.min(1, MAX / Math.max(image.width, image.height))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(image.width * scale)
+      canvas.height = Math.round(image.height * scale)
+      canvas.getContext('2d')!.drawImage(image, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL('image/jpeg', 0.85))
+    }
+    image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('load failed')) }
+    image.src = objectUrl
+  })
+}
+
 function wireFileInput(
   input: HTMLInputElement,
   storageKey: string,
@@ -103,13 +123,13 @@ function wireFileInput(
   input.addEventListener('change', async () => {
     const file = input.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const base64 = e.target?.result as string
-      await chrome.storage.local.set({ [storageKey]: base64 })
-      showSelfieSlot(img, placeholder, label, base64)
+    try {
+      const dataUrl = await compressToDataUrl(file)
+      await chrome.storage.local.set({ [storageKey]: dataUrl })
+      showSelfieSlot(img, placeholder, label, dataUrl)
+    } catch (err) {
+      console.error('Selfie save failed:', err)
     }
-    reader.readAsDataURL(file)
   })
 }
 
@@ -150,20 +170,33 @@ stopBtn.addEventListener('click', async () => {
 scanBtn.addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   if (!tab?.id) return
+
+  scanBtn.textContent = 'Scanning…'
+  scanBtn.disabled = true
+
   try {
+    // Try sending to an already-running content script first
     await chrome.tabs.sendMessage(tab.id, { type: 'START_SCAN' })
-    scanBtn.textContent = 'Scanning…'
-    scanBtn.disabled = true
-    setTimeout(() => {
-      scanBtn.textContent = 'Scan This Page'
-      scanBtn.disabled = false
-    }, 2000)
   } catch {
-    scanBtn.textContent = 'No page to scan'
-    setTimeout(() => {
-      scanBtn.textContent = 'Scan This Page'
-    }, 2000)
+    // Content script not present — inject it now (happens after extension reload)
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['src/content/index.ts'],
+      })
+      await chrome.tabs.sendMessage(tab.id, { type: 'START_SCAN' })
+    } catch {
+      scanBtn.textContent = 'Refresh page & retry'
+      scanBtn.disabled = false
+      setTimeout(() => { scanBtn.textContent = 'Scan This Page' }, 3000)
+      return
+    }
   }
+
+  setTimeout(() => {
+    scanBtn.textContent = 'Scan This Page'
+    scanBtn.disabled = false
+  }, 2000)
 })
 
 openBtn.addEventListener('click', () => {
