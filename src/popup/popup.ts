@@ -19,6 +19,8 @@ const scanBtn = document.getElementById('scanBtn') as HTMLButtonElement
 const openBtn = document.getElementById('openDressingRoom') as HTMLButtonElement
 const stopBtn = document.getElementById('stopBtn') as HTMLButtonElement
 const revealBtn = document.getElementById('revealBtn') as HTMLButtonElement
+const testKeyBtn = document.getElementById('testKeyBtn') as HTMLButtonElement
+const keyStatus = document.getElementById('keyStatus') as HTMLSpanElement
 
 function showSelfieSlot(
   img: HTMLImageElement,
@@ -136,13 +138,40 @@ function wireFileInput(
 wireFileInput(selfieInput1, 'selfie1', selfieImg1, selfiePlaceholder1, slotLabel1)
 wireFileInput(selfieInput2, 'selfie2', selfieImg2, selfiePlaceholder2, slotLabel2)
 
-let apiKeyTimer: ReturnType<typeof setTimeout>
-apiKeyInput.addEventListener('input', () => {
-  clearTimeout(apiKeyTimer)
-  apiKeyTimer = setTimeout(async () => {
-    await chrome.storage.local.set({ apiKey: apiKeyInput.value.trim() })
-  }, 600)
+apiKeyInput.addEventListener('input', async () => {
+  const val = apiKeyInput.value.trim()
+  await chrome.storage.local.set({ apiKey: val })
+  keyStatus.textContent = ''
 })
+
+async function testKey(): Promise<void> {
+  const val = apiKeyInput.value.trim()
+  if (!val) { keyStatus.style.color = '#e53e3e'; keyStatus.textContent = 'Enter a key first'; return }
+  testKeyBtn.disabled = true
+  testKeyBtn.textContent = 'Testing…'
+  keyStatus.textContent = ''
+  try {
+    const res = await fetch('https://api.openai.com/v1/models', {
+      headers: { Authorization: `Bearer ${val}` },
+    })
+    if (res.ok) {
+      keyStatus.style.color = '#22c55e'
+      keyStatus.textContent = 'Key valid ✓'
+    } else {
+      const err = await res.json().catch(() => ({})) as { error?: { message?: string } }
+      keyStatus.style.color = '#e53e3e'
+      keyStatus.textContent = err.error?.message ?? `HTTP ${res.status}`
+    }
+  } catch {
+    keyStatus.style.color = '#e53e3e'
+    keyStatus.textContent = 'Network error'
+  } finally {
+    testKeyBtn.disabled = false
+    testKeyBtn.textContent = 'Test API Key'
+  }
+}
+
+testKeyBtn.addEventListener('click', testKey)
 
 let limitTimer: ReturnType<typeof setTimeout>
 limitInput.addEventListener('input', () => {

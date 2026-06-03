@@ -357,11 +357,15 @@
     </div>
 
     <div class="api-row">
-      <div class="section-label">OpenAI API Key</div>
+      <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
+        OpenAI API Key
+        <span id="keyStatus" style="font-size:10px;font-weight:500;letter-spacing:0;text-transform:none;color:#aaa;"></span>
+      </div>
       <div class="api-input-wrap">
         <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off" />
         <button class="reveal-btn" id="revealBtn" title="Show/hide key">👁</button>
       </div>
+      <button id="testKeyBtn" style="margin-top:6px;background:none;border:1px solid #e8e8e8;border-radius:6px;padding:4px 10px;font-size:11px;color:#666;cursor:pointer;width:100%;transition:background 0.15s;" onmouseover="this.style.background='#f7f7f7'" onmouseout="this.style.background='none'">Test API Key</button>
     </div>
 
     <div class="limit-row">
