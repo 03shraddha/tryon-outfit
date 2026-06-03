@@ -7,7 +7,8 @@ const totalCount = document.getElementById('totalCount') as HTMLDivElement
 const hoverHint = document.getElementById('hoverHint') as HTMLDivElement
 const clearFailedBtn = document.getElementById('clearFailed') as HTMLButtonElement
 
-let currentDomain = 'all'
+const params = new URLSearchParams(location.search)
+let currentDomain = params.get('domain') ?? 'all'
 let allLooks: Look[] = []
 
 function blobUrl(blob: Blob): string {

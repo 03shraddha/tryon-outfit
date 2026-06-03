@@ -228,8 +228,14 @@ scanBtn.addEventListener('click', async () => {
   }, 2000)
 })
 
-openBtn.addEventListener('click', () => {
-  const url = chrome.runtime.getURL('src/dressing-room/index.html')
+openBtn.addEventListener('click', async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  let domain = ''
+  try {
+    if (tab?.url) domain = new URL(tab.url).hostname.replace(/^www\./, '')
+  } catch { /* non-URL tab */ }
+  const base = chrome.runtime.getURL('src/dressing-room/index.html')
+  const url = domain ? `${base}?domain=${encodeURIComponent(domain)}` : base
   chrome.tabs.create({ url })
 })
 

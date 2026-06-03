@@ -218,6 +218,21 @@
 
       .reveal-btn:hover { color: #666; }
 
+      .test-key-btn {
+        margin-top: 6px;
+        background: none;
+        border: 1px solid #e8e8e8;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 11px;
+        color: #666;
+        cursor: pointer;
+        width: 100%;
+        transition: background 0.15s;
+      }
+
+      .test-key-btn:hover { background: #f7f7f7; }
+
       /* Daily limit */
       .limit-row {
         display: flex;
@@ -365,7 +380,7 @@
         <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off" />
         <button class="reveal-btn" id="revealBtn" title="Show/hide key">👁</button>
       </div>
-      <button id="testKeyBtn" style="margin-top:6px;background:none;border:1px solid #e8e8e8;border-radius:6px;padding:4px 10px;font-size:11px;color:#666;cursor:pointer;width:100%;transition:background 0.15s;" onmouseover="this.style.background='#f7f7f7'" onmouseout="this.style.background='none'">Test API Key</button>
+      <button id="testKeyBtn" class="test-key-btn">Test API Key</button>
     </div>
 
     <div class="limit-row">
