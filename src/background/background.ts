@@ -1,4 +1,4 @@
-import { addLook, updateLook, getLookCount, findLookBySrc } from '../lib/db.ts'
+import { addLook, updateLook, getLookCount, findLookBySrc, getAllLooks } from '../lib/db.ts'
 import { swapModel } from '../lib/openai.ts'
 import { normalizeImageUrl, isUnfetchableUrl } from '../lib/imageUrl.ts'
 import type { MessageToBackground, QueueItem } from '../types.ts'
@@ -172,3 +172,20 @@ chrome.runtime.onMessage.addListener((message: MessageToBackground, _sender, sen
 chrome.runtime.onInstalled.addListener(() => {
   chrome.action.setBadgeText({ text: '' })
 })
+
+// Recover items that were left pending/processing when the service worker was killed.
+// MV3 service workers die after ~30s of inactivity; the in-memory queue is wiped on
+// restart but DB records remain, so we need to re-enqueue them here.
+getAllLooks().then(async (looks) => {
+  for (const look of looks) {
+    if (look.status !== 'pending' && look.status !== 'processing') continue
+    if (look.status === 'processing') {
+      await updateLook(look.id, { status: 'pending' })
+    }
+    if (!queuedUrls.has(look.originalSrc)) {
+      queuedUrls.add(look.originalSrc)
+      queue.push({ id: look.id, src: look.originalSrc, domain: look.domain })
+    }
+  }
+  if (queue.length > 0) processNext()
+}).catch(() => { /* first install — DB not ready yet */ })
