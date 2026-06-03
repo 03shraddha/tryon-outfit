@@ -45,45 +45,6 @@ function sendToBackground(src: string): void {
 
 const seenThisPage = new Set<string>()
 
-const intersectionObserver = new IntersectionObserver(
-  (entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue
-      const img = entry.target as HTMLImageElement
-      intersectionObserver.unobserve(img)
-
-      if (!img.complete || img.naturalWidth === 0 || img.naturalWidth < MIN_SIZE) {
-        img.addEventListener(
-          'load',
-          () => {
-            const url = resolveUrl(img)
-            if (isUnfetchableUrl(url) || isPlaceholderDataUri(url)) return
-            if (isModelImage(img, url) && !seenThisPage.has(url)) {
-              seenThisPage.add(url)
-              sendToBackground(url)
-            }
-          },
-          { once: true },
-        )
-        continue
-      }
-
-      const url = resolveUrl(img)
-      if (isModelImage(img, url) && !seenThisPage.has(url)) {
-        seenThisPage.add(url)
-        sendToBackground(url)
-      }
-    }
-  },
-  { threshold: 0.3 },
-)
-
-function observeImg(img: HTMLImageElement): void {
-  if (img.dataset.poseObserved) return
-  img.dataset.poseObserved = '1'
-  intersectionObserver.observe(img)
-}
-
 function evaluateImgNow(img: HTMLImageElement): void {
   const url = resolveUrl(img)
   if (!url || isUnfetchableUrl(url) || isPlaceholderDataUri(url) || seenThisPage.has(url)) return
@@ -109,26 +70,17 @@ function evaluateImgNow(img: HTMLImageElement): void {
   }
 }
 
-let scanStarted = false
-
-// Only start scanning when popup explicitly requests it for this tab
+// Only start scanning when popup explicitly requests it for this tab.
+// Each click does a one-time snapshot of images currently visible in the
+// viewport — no scroll observers, so only what you see right now gets queued.
 chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendResponse) => {
   if (message.type !== 'START_SCAN') return
   sendResponse({ ok: true })  // must respond or popup's await rejects
-  if (scanStarted) return
-  scanStarted = true
 
-  document.querySelectorAll<HTMLImageElement>('img').forEach(observeImg)
-
-  new MutationObserver(() => {
-    document.querySelectorAll<HTMLImageElement>('img:not([data-pose-observed])').forEach(observeImg)
-  }).observe(document.documentElement, { childList: true, subtree: true })
-
-  new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.type !== 'attributes') continue
-      const img = mutation.target as HTMLImageElement
-      evaluateImgNow(img)
-    }
-  }).observe(document.documentElement, { attributes: true, attributeFilter: ['src'], subtree: true })
+  const { innerHeight, innerWidth } = window
+  for (const img of Array.from(document.querySelectorAll<HTMLImageElement>('img'))) {
+    const rect = img.getBoundingClientRect()
+    const inViewport = rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth
+    if (inViewport) evaluateImgNow(img)
+  }
 })
