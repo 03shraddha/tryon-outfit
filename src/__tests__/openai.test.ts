@@ -37,13 +37,13 @@ beforeEach(() => {
 describe('swapModel', () => {
   it('returns a Blob on a successful API response', async () => {
     mockFetchOk()
-    const result = await swapModel(makeProductBlob(), FAKE_SELFIE_B64, FAKE_API_KEY)
+    const result = await swapModel(makeProductBlob(), [FAKE_SELFIE_B64], FAKE_API_KEY)
     expect(result).toBeInstanceOf(Blob)
   })
 
   it('sends a POST to the correct OpenAI endpoint', async () => {
     mockFetchOk()
-    await swapModel(makeProductBlob(), FAKE_SELFIE_B64, FAKE_API_KEY)
+    await swapModel(makeProductBlob(), [FAKE_SELFIE_B64], FAKE_API_KEY)
 
     const [url, opts] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit]
     expect(url).toBe('https://api.openai.com/v1/images/edits')
@@ -52,7 +52,7 @@ describe('swapModel', () => {
 
   it('includes the Authorization header with the API key', async () => {
     mockFetchOk()
-    await swapModel(makeProductBlob(), FAKE_SELFIE_B64, FAKE_API_KEY)
+    await swapModel(makeProductBlob(), [FAKE_SELFIE_B64], FAKE_API_KEY)
 
     const [, opts] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit]
     expect((opts.headers as Record<string, string>)['Authorization']).toBe(`Bearer ${FAKE_API_KEY}`)
@@ -60,14 +60,14 @@ describe('swapModel', () => {
 
   it('throws with the API error message on 401 unauthorized', async () => {
     mockFetchError(401, 'Incorrect API key provided')
-    await expect(swapModel(makeProductBlob(), FAKE_SELFIE_B64, 'bad-key')).rejects.toThrow(
+    await expect(swapModel(makeProductBlob(), [FAKE_SELFIE_B64], 'bad-key')).rejects.toThrow(
       'Incorrect API key provided',
     )
   })
 
   it('throws with the API error message on 429 rate limit', async () => {
     mockFetchError(429, 'Rate limit exceeded. Please try again later.')
-    await expect(swapModel(makeProductBlob(), FAKE_SELFIE_B64, FAKE_API_KEY)).rejects.toThrow(
+    await expect(swapModel(makeProductBlob(), [FAKE_SELFIE_B64], FAKE_API_KEY)).rejects.toThrow(
       'Rate limit exceeded',
     )
   })
@@ -81,7 +81,7 @@ describe('swapModel', () => {
         json: async () => ({}),   // no error.message field
       }),
     )
-    await expect(swapModel(makeProductBlob(), FAKE_SELFIE_B64, FAKE_API_KEY)).rejects.toThrow(
+    await expect(swapModel(makeProductBlob(), [FAKE_SELFIE_B64], FAKE_API_KEY)).rejects.toThrow(
       'HTTP 500',
     )
   })
@@ -94,12 +94,12 @@ describe('swapModel', () => {
         json: async () => ({ data: [] }),
       }),
     )
-    await expect(swapModel(makeProductBlob(), FAKE_SELFIE_B64, FAKE_API_KEY)).rejects.toThrow()
+    await expect(swapModel(makeProductBlob(), [FAKE_SELFIE_B64], FAKE_API_KEY)).rejects.toThrow()
   })
 
   it('throws when fetch itself rejects (network error)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Failed to fetch')))
-    await expect(swapModel(makeProductBlob(), FAKE_SELFIE_B64, FAKE_API_KEY)).rejects.toThrow(
+    await expect(swapModel(makeProductBlob(), [FAKE_SELFIE_B64], FAKE_API_KEY)).rejects.toThrow(
       'Failed to fetch',
     )
   })

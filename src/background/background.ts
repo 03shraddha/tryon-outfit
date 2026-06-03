@@ -1,4 +1,4 @@
-import { addLook, updateLook, getLookCount, hasProcessed } from '../lib/db.ts'
+import { addLook, updateLook, getLookCount, findLookBySrc } from '../lib/db.ts'
 import { swapModel } from '../lib/openai.ts'
 import { normalizeImageUrl, isUnfetchableUrl } from '../lib/imageUrl.ts'
 import type { MessageToBackground, QueueItem } from '../types.ts'
@@ -132,8 +132,26 @@ chrome.runtime.onMessage.addListener((message: MessageToBackground, _sender, sen
 
   if (queuedUrls.has(src)) return
 
-  hasProcessed(src).then((already) => {
-    if (already) return
+  findLookBySrc(src).then(async (existing) => {
+    // Already successfully processed — don't re-run
+    if (existing?.status === 'done') return
+
+    if (existing?.status === 'error') {
+      // Reset the failed record and requeue it for a retry
+      await updateLook(existing.id, { status: 'pending', timestamp: Date.now() })
+      queuedUrls.add(src)
+      queue.push({ id: existing.id, src, domain })
+      processNext()
+      return
+    }
+
+    if (existing) {
+      // pending/processing from a previous service-worker session — just requeue
+      queuedUrls.add(src)
+      queue.push({ id: existing.id, src, domain })
+      processNext()
+      return
+    }
 
     const id = crypto.randomUUID()
     queuedUrls.add(src)

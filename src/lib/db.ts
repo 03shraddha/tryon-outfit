@@ -41,10 +41,14 @@ export async function getLooksByDomain(domain: string): Promise<Look[]> {
   return db.getAllFromIndex(STORE, 'domain', domain)
 }
 
-export async function hasProcessed(src: string): Promise<boolean> {
+export async function findLookBySrc(src: string): Promise<Look | undefined> {
   const db = await getDb()
-  const result = await db.getFromIndex(STORE, 'originalSrc', src)
-  return result !== undefined
+  return db.getFromIndex(STORE, 'originalSrc', src) as Promise<Look | undefined>
+}
+
+export async function hasProcessed(src: string): Promise<boolean> {
+  const result = await findLookBySrc(src)
+  return result?.status === 'done'
 }
 
 export async function getLookCount(): Promise<number> {
