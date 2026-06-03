@@ -19,9 +19,9 @@ export async function swapModel(
 ): Promise<Blob> {
   const form = new FormData()
   form.append('model', 'gpt-image-1')
-  form.append('image[]', productBlob, 'product.png')
+  form.append('image', productBlob, 'product.png')
   selfieBase64s.forEach((b64, i) => {
-    form.append('image[]', base64ToBlob(b64), `reference-${i + 1}.png`)
+    form.append('image', base64ToBlob(b64), `reference-${i + 1}.png`)
   })
 
   const refCount = selfieBase64s.length
@@ -41,7 +41,6 @@ export async function swapModel(
   )
   form.append('n', '1')
   form.append('size', '1024x1024')
-  form.append('response_format', 'b64_json')
 
   const res = await fetch('https://api.openai.com/v1/images/edits', {
     method: 'POST',
