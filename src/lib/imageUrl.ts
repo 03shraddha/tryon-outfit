@@ -13,6 +13,7 @@
 // e.g. /h_720,q_90,w_540/ or /w_200,c_fill,q_auto/
 const CLOUDINARY_TRANSFORM_RE = /\/(?:[a-z]{1,2}_[^,/]+,?)+\//
 
+// test-only: prefer normalizeImageUrl in production
 /**
  * Strip Cloudinary transform parameters from Myntra CDN URLs.
  *
@@ -37,6 +38,7 @@ export function normalizeMyntraUrl(url: string): string {
 // They appear as dot-underscore tokens before the file extension.
 const AMAZON_SIZE_RE = /\._[A-Z0-9_]+_(?=\.\w{2,5}$)/
 
+// test-only: prefer normalizeImageUrl in production
 /**
  * Upgrade Amazon product image URLs to a higher-resolution variant.
  *

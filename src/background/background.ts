@@ -1,7 +1,7 @@
 import { addLook, updateLook, getLookCount, findLookBySrc, getAllLooks } from '../lib/db.ts'
 import { swapModel } from '../lib/openai.ts'
 import { normalizeImageUrl, isUnfetchableUrl } from '../lib/imageUrl.ts'
-import type { MessageToBackground, QueueItem } from '../types.ts'
+import type { Look, MessageToBackground, QueueItem } from '../types.ts'
 
 const queue: QueueItem[] = []
 const queuedUrls = new Set<string>()
@@ -69,12 +69,6 @@ async function processImage(item: QueueItem): Promise<void> {
 
     await updateLook(item.id, { status: 'processing' })
 
-    // Defensive re-check: the content script should never send these, but
-    // guard here too so a stale queue entry can't cause a confusing error.
-    if (isUnfetchableUrl(item.src)) {
-      throw new Error(`Unfetchable URL scheme: ${item.src.slice(0, 30)}`)
-    }
-
     // Upgrade low-res CDN URLs to the highest-quality variant available
     // without authentication (Myntra Cloudinary transforms, Amazon size tokens).
     const fetchUrl = normalizeImageUrl(item.src)
@@ -122,6 +116,47 @@ function processNext(): void {
   }
 }
 
+async function handleQueueImage(src: string, domain: string): Promise<void> {
+  const existing = await findLookBySrc(src)
+
+  if (existing?.status === 'done') return
+
+  if (existing?.status === 'error') {
+    await updateLook(existing.id, { status: 'pending', timestamp: Date.now() })
+    queuedUrls.add(src)
+    queue.push({ id: existing.id, src, domain })
+    processNext()
+    return
+  }
+
+  if (existing) {
+    queuedUrls.add(src)
+    queue.push({ id: existing.id, src, domain })
+    processNext()
+    return
+  }
+
+  const id = crypto.randomUUID()
+  queuedUrls.add(src)
+
+  addLook({
+    id,
+    originalSrc: src,
+    domain,
+    timestamp: Date.now(),
+    status: 'pending',
+  }).then(() => {
+    queue.push({ id, src, domain })
+    processNext()
+  }).catch(async () => {
+    const dup = await findLookBySrc(src)
+    if (dup && dup.status !== 'done') {
+      queue.push({ id: dup.id, src, domain })
+      processNext()
+    }
+  })
+}
+
 chrome.runtime.onMessage.addListener((message: MessageToBackground, _sender, sendResponse) => {
   if (message.type === 'CLEAR_QUEUE') {
     queue.length = 0
@@ -138,48 +173,10 @@ chrome.runtime.onMessage.addListener((message: MessageToBackground, _sender, sen
   if (message.type !== 'QUEUE_IMAGE') return
 
   const { src, domain } = message
-
-  // Drop data: and blob: URLs immediately — they can't be fetched from a
-  // service worker and were not supposed to be sent by the content script.
   if (isUnfetchableUrl(src)) return
-
   if (queuedUrls.has(src)) return
 
-  findLookBySrc(src).then(async (existing) => {
-    // Already successfully processed — don't re-run
-    if (existing?.status === 'done') return
-
-    if (existing?.status === 'error') {
-      // Reset the failed record and requeue it for a retry
-      await updateLook(existing.id, { status: 'pending', timestamp: Date.now() })
-      queuedUrls.add(src)
-      queue.push({ id: existing.id, src, domain })
-      processNext()
-      return
-    }
-
-    if (existing) {
-      // pending/processing from a previous service-worker session — just requeue
-      queuedUrls.add(src)
-      queue.push({ id: existing.id, src, domain })
-      processNext()
-      return
-    }
-
-    const id = crypto.randomUUID()
-    queuedUrls.add(src)
-
-    addLook({
-      id,
-      originalSrc: src,
-      domain,
-      timestamp: Date.now(),
-      status: 'pending',
-    }).then(() => {
-      queue.push({ id, src, domain })
-      processNext()
-    })
-  })
+  void handleQueueImage(src, domain)
 })
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -189,16 +186,15 @@ chrome.runtime.onInstalled.addListener(() => {
 // Recover items that were left pending/processing when the service worker was killed.
 // MV3 service workers die after ~30s of inactivity; the in-memory queue is wiped on
 // restart but DB records remain, so we need to re-enqueue them here.
-getAllLooks().then(async (looks) => {
+;(async () => {
+  const looks = await getAllLooks().catch(() => [] as Look[])
   for (const look of looks) {
     if (look.status !== 'pending' && look.status !== 'processing') continue
-    if (look.status === 'processing') {
-      await updateLook(look.id, { status: 'pending' })
-    }
+    if (look.status === 'processing') await updateLook(look.id, { status: 'pending' })
     if (!queuedUrls.has(look.originalSrc)) {
       queuedUrls.add(look.originalSrc)
       queue.push({ id: look.id, src: look.originalSrc, domain: look.domain })
     }
   }
   if (queue.length > 0) processNext()
-}).catch(() => { /* first install — DB not ready yet */ })
+})()

@@ -36,6 +36,7 @@ export async function getAllLooks(): Promise<Look[]> {
   return db.getAllFromIndex(STORE, 'timestamp')
 }
 
+// test-only: not called from production code
 export async function getLooksByDomain(domain: string): Promise<Look[]> {
   const db = await getDb()
   return db.getAllFromIndex(STORE, 'domain', domain)
@@ -46,6 +47,7 @@ export async function findLookBySrc(src: string): Promise<Look | undefined> {
   return db.getFromIndex(STORE, 'originalSrc', src) as Promise<Look | undefined>
 }
 
+// test-only: not called from production code
 export async function hasProcessed(src: string): Promise<boolean> {
   const result = await findLookBySrc(src)
   return result?.status === 'done'

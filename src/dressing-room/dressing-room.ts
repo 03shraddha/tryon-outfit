@@ -11,19 +11,17 @@ const params = new URLSearchParams(location.search)
 let currentDomain = params.get('domain') ?? 'all'
 let allLooks: Look[] = []
 
-function blobUrl(blob: Blob): string {
-  return URL.createObjectURL(blob)
-}
-
 function renderCard(look: Look): HTMLDivElement {
   const card = document.createElement('div')
   card.className = 'card'
 
   if (look.status === 'done' && look.processedBlob) {
+    const objUrl = URL.createObjectURL(look.processedBlob)
     const processed = document.createElement('img')
-    processed.src = blobUrl(look.processedBlob)
     processed.alt = ''
     processed.className = 'processed'
+    processed.addEventListener('load', () => URL.revokeObjectURL(objUrl), { once: true })
+    processed.src = objUrl
 
     const original = document.createElement('img')
     original.src = look.originalSrc
@@ -35,12 +33,25 @@ function renderCard(look: Look): HTMLDivElement {
   } else if (look.status === 'error') {
     const overlay = document.createElement('div')
     overlay.className = 'status-overlay'
-    const errText = look.errorMessage ? look.errorMessage.slice(0, 100) : ''
-    overlay.innerHTML = `
-      <span class="error-icon">✕</span>
-      <span class="status-label">Failed</span>
-      ${errText ? `<span class="error-msg">${errText}</span>` : ''}
-    `
+
+    const icon = document.createElement('span')
+    icon.className = 'error-icon'
+    icon.textContent = '✕'
+
+    const label = document.createElement('span')
+    label.className = 'status-label'
+    label.textContent = 'Failed'
+
+    overlay.appendChild(icon)
+    overlay.appendChild(label)
+
+    if (look.errorMessage) {
+      const msg = document.createElement('span')
+      msg.className = 'error-msg'
+      msg.textContent = look.errorMessage.slice(0, 100)
+      overlay.appendChild(msg)
+    }
+
     const original = document.createElement('img')
     original.src = look.originalSrc
     original.alt = ''
@@ -50,10 +61,17 @@ function renderCard(look: Look): HTMLDivElement {
   } else {
     const overlay = document.createElement('div')
     overlay.className = 'status-overlay'
-    overlay.innerHTML = `
-      <div class="spinner"></div>
-      <span class="status-label">${look.status === 'processing' ? 'Processing…' : 'Queued'}</span>
-    `
+
+    const spinner = document.createElement('div')
+    spinner.className = 'spinner'
+
+    const label = document.createElement('span')
+    label.className = 'status-label'
+    label.textContent = look.status === 'processing' ? 'Processing…' : 'Queued'
+
+    overlay.appendChild(spinner)
+    overlay.appendChild(label)
+
     const original = document.createElement('img')
     original.src = look.originalSrc
     original.alt = ''
@@ -126,8 +144,15 @@ function render(): void {
 
   if (total === 0) {
     totalCount.textContent = 'Start browsing to collect looks'
+  } else if (done === total) {
+    totalCount.textContent = `${total} look${total !== 1 ? 's' : ''} ready · ${domains} brand${domains !== 1 ? 's' : ''}`
   } else {
-    totalCount.textContent = `${done} of ${total} looks ready · ${domains} brand${domains !== 1 ? 's' : ''}`
+    const pending = allLooks.filter((l) => l.status === 'pending' || l.status === 'processing').length
+    const failed = allLooks.filter((l) => l.status === 'error').length
+    const parts: string[] = [`${done} ready`]
+    if (pending > 0) parts.push(`${pending} processing`)
+    if (failed > 0) parts.push(`${failed} failed`)
+    totalCount.textContent = `${parts.join(' · ')} · ${domains} brand${domains !== 1 ? 's' : ''}`
   }
 }
 
@@ -152,8 +177,5 @@ clearFailedBtn.addEventListener('click', async () => {
 
 refresh()
 
-// Poll for updates (pending/processing looks)
-setInterval(() => {
-  const hasPending = allLooks.some((l) => l.status === 'pending' || l.status === 'processing')
-  if (hasPending) refresh()
-}, 4000)
+setInterval(refresh, 4000)
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh() })
