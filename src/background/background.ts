@@ -45,14 +45,27 @@ async function processImage(item: QueueItem): Promise<void> {
 
     const { selfie1, selfie2, apiKey, enabled } = raw
 
-    if (enabled === false) return
-    if (!selfie1 || !apiKey) return
+    if (enabled === false) {
+      await updateLook(item.id, { status: 'error', errorMessage: 'Extension disabled — enable it in the popup' })
+      return
+    }
+    if (!selfie1) {
+      await updateLook(item.id, { status: 'error', errorMessage: 'No photo — add your selfie in the popup' })
+      return
+    }
+    if (!apiKey) {
+      await updateLook(item.id, { status: 'error', errorMessage: 'No API key — add your OpenAI key in the popup' })
+      return
+    }
 
     const selfies = [selfie1, ...(selfie2 ? [selfie2] : [])]
 
     const limit = dailyLimit ?? DAILY_LIMIT_DEFAULT
     const used = await getDailyCount()
-    if (used >= limit) return
+    if (used >= limit) {
+      await updateLook(item.id, { status: 'error', errorMessage: `Daily limit of ${limit} reached — increase it in the popup` })
+      return
+    }
 
     await updateLook(item.id, { status: 'processing' })
 
