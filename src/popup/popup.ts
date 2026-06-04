@@ -256,27 +256,41 @@ scanBtn.addEventListener('click', async () => {
   // Send queued URLs to background from the popup (which always has a valid chrome context).
   // The content script passes URLs back here to avoid the invalidated-extension-context problem
   // where chrome.runtime.sendMessage fails silently after an extension reload.
-  if (res?.srcs?.length) {
-    let sent = 0
-    for (const src of res.srcs) {
+  await relayToBg(res)
+
+  // If any images were lazy (still loading at scan time), wait 2.5s for them to finish
+  // and rescan to pick up the URLs stored in pendingLazyUrls by the load listener.
+  if (res?.lazy > 0) {
+    setTimeout(async () => {
       try {
-        await chrome.runtime.sendMessage({ type: 'QUEUE_IMAGE', src, domain: res.domain })
-        sent++
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        scanResult.style.color = '#e53e3e'
-        scanResult.textContent = `Background unreachable: ${msg.slice(0, 80)}`
-        console.error('[Pose] QUEUE_IMAGE send failed:', msg)
-        break
-      }
-    }
-    if (sent > 0 && scanResult.style.color !== 'rgb(229, 62, 62)') {
-      scanResult.style.color = '#22c55e'
-      scanResult.textContent = `Queued ${sent} image${sent !== 1 ? 's' : ''} — check dressing room`
-      setTimeout(() => { scanResult.textContent = '' }, 8000)
-    }
+        const followUp = await chrome.tabs.sendMessage(tab.id!, { type: 'START_SCAN' }) as ScanResult
+        await relayToBg(followUp)
+      } catch { /* popup closed or tab navigated away */ }
+    }, 2500)
   }
 })
+
+async function relayToBg(res: ScanResult | null): Promise<void> {
+  if (!res?.srcs?.length) return
+  let sent = 0
+  for (const src of res.srcs) {
+    try {
+      await chrome.runtime.sendMessage({ type: 'QUEUE_IMAGE', src, domain: res.domain })
+      sent++
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      scanResult.style.color = '#e53e3e'
+      scanResult.textContent = `Background unreachable: ${msg.slice(0, 80)}`
+      console.error('[Pose] QUEUE_IMAGE send failed:', msg)
+      return
+    }
+  }
+  if (sent > 0) {
+    scanResult.style.color = '#22c55e'
+    scanResult.textContent = `Queued ${sent} image${sent !== 1 ? 's' : ''} — check dressing room`
+    setTimeout(() => { scanResult.textContent = '' }, 8000)
+  }
+}
 
 openBtn.addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })

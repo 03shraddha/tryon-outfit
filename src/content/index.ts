@@ -57,6 +57,7 @@ function sendToBackground(src: string): void {
 }
 
 const seenThisPage = new Set<string>()
+const pendingLazyUrls: string[] = []
 
 type EvalResult = 'queued' | 'lazy' | 'skipped' | 'seen'
 
@@ -78,7 +79,7 @@ function evaluateImgNow(img: HTMLImageElement): EvalResult {
         const loadedUrl = resolveUrl(img)
         if (!seenThisPage.has(loadedUrl) && isModelImage(img, loadedUrl)) {
           seenThisPage.add(loadedUrl)
-          sendToBackground(loadedUrl)
+          pendingLazyUrls.push(loadedUrl)
         }
       },
       { once: true },
@@ -101,6 +102,15 @@ chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendRe
   let queued = 0, lazy = 0, skipped = 0, viewport = 0
   const srcs: string[] = []
   const domain = location.hostname.replace(/^www\./, '')
+
+  // Drain URLs from lazy-load events that fired since the last scan.
+  // These are stored here instead of calling sendToBackground() directly,
+  // since that fails silently when the content script context is invalidated.
+  const drained = pendingLazyUrls.splice(0)
+  for (const u of drained) {
+    srcs.push(u)
+    queued++
+  }
 
   const allImgs = document.querySelectorAll<HTMLImageElement>('img')
   console.log(`[Pose] Scan started — ${allImgs.length} total <img> elements on page`)
