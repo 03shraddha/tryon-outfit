@@ -6,6 +6,7 @@ const tabsEl = document.getElementById('tabs') as HTMLDivElement
 const totalCount = document.getElementById('totalCount') as HTMLDivElement
 const hoverHint = document.getElementById('hoverHint') as HTMLDivElement
 const clearFailedBtn = document.getElementById('clearFailed') as HTMLButtonElement
+const debugLine = document.getElementById('debugLine') as HTMLDivElement
 
 const params = new URLSearchParams(location.search)
 let currentDomain = params.get('domain') ?? 'all'
@@ -162,7 +163,29 @@ function switchDomain(domain: string): void {
 }
 
 async function refresh(): Promise<void> {
-  allLooks = await getAllLooks()
+  try {
+    allLooks = await getAllLooks()
+  } catch (err) {
+    console.error('[Pose] getAllLooks failed:', err)
+    totalCount.textContent = `DB error: ${err instanceof Error ? err.message : String(err)}`
+    return
+  }
+
+  // Show last background event for live diagnostics (no DevTools needed)
+  try {
+    const stored = await chrome.storage.local.get('poseDebug') as {
+      poseDebug?: { event: string; detail: string; t: string }
+    }
+    const d = stored.poseDebug
+    if (d) {
+      debugLine.textContent = `bg @ ${d.t}: ${d.event}${d.detail ? ' · ' + d.detail : ''}`
+      debugLine.style.color = d.event.includes('err') || d.event.includes('lost') ? '#e53e3e' : '#aaa'
+    } else {
+      debugLine.textContent = 'bg: no events yet — scan a page first'
+      debugLine.style.color = '#ccc'
+    }
+  } catch { /* storage unavailable */ }
+
   render()
 }
 

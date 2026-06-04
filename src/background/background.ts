@@ -24,6 +24,7 @@ async function incrementDailyCount(): Promise<void> {
 }
 
 async function processImage(item: QueueItem): Promise<void> {
+  console.log(`[Pose] processImage start: ${item.src.slice(-60)}`)
   try {
     const stored = await chrome.storage.local.get(['selfie1', 'selfie2', 'selfie', 'apiKey', 'enabled', 'dailyLimit'])
     const raw = stored as {
@@ -93,6 +94,7 @@ async function processImage(item: QueueItem): Promise<void> {
 
     const processedBlob = await swapModel(productBlob, selfies, apiKey)
 
+    console.log(`[Pose] processImage done: ${item.src.slice(-60)}`)
     await updateLook(item.id, { status: 'done', processedBlob })
     await incrementDailyCount()
 
@@ -101,6 +103,7 @@ async function processImage(item: QueueItem): Promise<void> {
     await chrome.action.setBadgeBackgroundColor({ color: '#1a1a1a' })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
+    console.error(`[Pose] processImage error for ${item.src.slice(-60)}:`, msg)
     await updateLook(item.id, { status: 'error', errorMessage: msg })
   }
 }
@@ -116,12 +119,24 @@ function processNext(): void {
   }
 }
 
+async function dbg(event: string, detail = ''): Promise<void> {
+  await chrome.storage.local.set({
+    poseDebug: { event, detail, t: new Date().toLocaleTimeString() },
+  })
+}
+
 async function handleQueueImage(src: string, domain: string): Promise<void> {
+  console.log('[Pose] handleQueueImage start:', src.slice(-60))
+  void dbg('handleQueueImage', src.slice(-50))
   const existing = await findLookBySrc(src)
 
-  if (existing?.status === 'done') return
+  if (existing?.status === 'done') {
+    console.log('[Pose] already done, skipping')
+    return
+  }
 
   if (existing?.status === 'error') {
+    console.log('[Pose] re-queuing errored look:', existing.id)
     await updateLook(existing.id, { status: 'pending', timestamp: Date.now() })
     queuedUrls.add(src)
     queue.push({ id: existing.id, src, domain })
@@ -130,6 +145,7 @@ async function handleQueueImage(src: string, domain: string): Promise<void> {
   }
 
   if (existing) {
+    console.log('[Pose] look already exists (status:', existing.status, '), re-queuing')
     queuedUrls.add(src)
     queue.push({ id: existing.id, src, domain })
     processNext()
@@ -139,22 +155,32 @@ async function handleQueueImage(src: string, domain: string): Promise<void> {
   const id = crypto.randomUUID()
   queuedUrls.add(src)
 
-  addLook({
-    id,
-    originalSrc: src,
-    domain,
-    timestamp: Date.now(),
-    status: 'pending',
-  }).then(() => {
+  try {
+    await addLook({ id, originalSrc: src, domain, timestamp: Date.now(), status: 'pending' })
+    console.log('[Pose] addLook success, queuing:', src.slice(-60))
+    void dbg('addLook_ok', src.slice(-50))
+    const count = await getLookCount()
+    void chrome.action.setBadgeText({ text: String(count) })
+    void chrome.action.setBadgeBackgroundColor({ color: '#888888' })
     queue.push({ id, src, domain })
     processNext()
-  }).catch(async () => {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn('[Pose] addLook failed:', msg)
+    void dbg('addLook_err', msg)
     const dup = await findLookBySrc(src)
-    if (dup && dup.status !== 'done') {
-      queue.push({ id: dup.id, src, domain })
-      processNext()
+    if (dup) {
+      console.log('[Pose] found duplicate look, status:', dup.status)
+      void dbg('addLook_dup', dup.status)
+      if (dup.status !== 'done') {
+        queue.push({ id: dup.id, src, domain })
+        processNext()
+      }
+    } else {
+      console.error('[Pose] addLook failed AND no duplicate found — look lost:', src)
+      void dbg('addLook_lost', msg)
     }
-  })
+  }
 }
 
 chrome.runtime.onMessage.addListener((message: MessageToBackground, _sender, sendResponse) => {
@@ -173,9 +199,17 @@ chrome.runtime.onMessage.addListener((message: MessageToBackground, _sender, sen
   if (message.type !== 'QUEUE_IMAGE') return
 
   const { src, domain } = message
-  if (isUnfetchableUrl(src)) return
-  if (queuedUrls.has(src)) return
+  if (isUnfetchableUrl(src)) {
+    console.debug('[Pose] QUEUE_IMAGE rejected (unfetchable):', src.slice(-60))
+    return
+  }
+  if (queuedUrls.has(src)) {
+    console.debug('[Pose] QUEUE_IMAGE already queued:', src.slice(-60))
+    return
+  }
 
+  console.log('[Pose] QUEUE_IMAGE received:', src.slice(-60))
+  void dbg('QUEUE_IMAGE', src.slice(-50))
   void handleQueueImage(src, domain)
 })
 

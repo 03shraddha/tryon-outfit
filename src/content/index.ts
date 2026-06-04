@@ -1,4 +1,4 @@
-import type { MessageToBackground, MessageToContent } from '../types.ts'
+import type { MessageToBackground, MessageToContent, ScanResult } from '../types.ts'
 import { isUnfetchableUrl, isPlaceholderDataUri } from '../lib/imageUrl.ts'
 
 const MIN_SIZE = 300
@@ -22,11 +22,24 @@ function resolveUrl(img: HTMLImageElement): string {
 function isModelImage(img: HTMLImageElement, url: string): boolean {
   const w = img.naturalWidth
   const h = img.naturalHeight
-  if (w < MIN_SIZE || h < MIN_SIZE) return false
+  if (w < MIN_SIZE || h < MIN_SIZE) {
+    console.debug(`[Pose] skip (too small ${w}×${h}):`, url.slice(-60))
+    return false
+  }
   const ratio = h / w
-  if (ratio >= PORTRAIT_RATIO) return true
-  if (w >= SQUARE_MIN && h >= SQUARE_MIN && ratio >= SQUARE_RATIO_LO && ratio <= SQUARE_RATIO_HI)
-    return FASHION_CDN_RE.test(url)
+  if (ratio >= PORTRAIT_RATIO) {
+    console.debug(`[Pose] PASS (portrait ${ratio.toFixed(2)}):`, url.slice(-60))
+    return true
+  }
+  if (w >= SQUARE_MIN && h >= SQUARE_MIN && ratio >= SQUARE_RATIO_LO && ratio <= SQUARE_RATIO_HI) {
+    if (FASHION_CDN_RE.test(url)) {
+      console.debug(`[Pose] PASS (square from fashion CDN):`, url.slice(-60))
+      return true
+    }
+    console.debug(`[Pose] skip (square but not fashion CDN):`, url.slice(-60))
+    return false
+  }
+  console.debug(`[Pose] skip (ratio ${ratio.toFixed(2)}, not portrait/square):`, url.slice(-60))
   return false
 }
 
@@ -38,18 +51,27 @@ function sendToBackground(src: string): void {
     src,
     domain: location.hostname.replace(/^www\./, ''),
   }
-  chrome.runtime.sendMessage(message).catch(() => {
-    // Extension context may be invalidated on navigation — ignore
+  chrome.runtime.sendMessage(message).catch((err) => {
+    console.warn('[Pose] Failed to send QUEUE_IMAGE to background:', err)
   })
 }
 
 const seenThisPage = new Set<string>()
 
-function evaluateImgNow(img: HTMLImageElement): void {
+type EvalResult = 'queued' | 'lazy' | 'skipped' | 'seen'
+
+function evaluateImgNow(img: HTMLImageElement): EvalResult {
   const url = resolveUrl(img)
-  if (!url || isUnfetchableUrl(url) || isPlaceholderDataUri(url) || seenThisPage.has(url)) return
+  if (!url) return 'skipped'
+  if (isUnfetchableUrl(url)) {
+    console.debug('[Pose] skip (unfetchable):', url.slice(-60))
+    return 'skipped'
+  }
+  if (isPlaceholderDataUri(url)) return 'skipped'
+  if (seenThisPage.has(url)) return 'seen'
 
   if (!img.complete || img.naturalWidth === 0 || img.naturalWidth < MIN_SIZE) {
+    console.debug(`[Pose] lazy (not loaded yet, src=${img.naturalWidth}×${img.naturalHeight}):`, url.slice(-60))
     img.addEventListener(
       'load',
       () => {
@@ -61,26 +83,42 @@ function evaluateImgNow(img: HTMLImageElement): void {
       },
       { once: true },
     )
-    return
+    return 'lazy'
   }
 
-  if (isModelImage(img, url) && !seenThisPage.has(url)) {
+  if (isModelImage(img, url)) {
     seenThisPage.add(url)
     sendToBackground(url)
+    return 'queued'
   }
+  return 'skipped'
 }
 
-// Only start scanning when popup explicitly requests it for this tab.
-// Each click does a one-time snapshot of images currently visible in the
-// viewport — no scroll observers, so only what you see right now gets queued.
 chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendResponse) => {
   if (message.type !== 'START_SCAN') return
-  sendResponse({ ok: true })  // must respond or popup's await rejects
 
   const { innerHeight, innerWidth } = window
-  for (const img of Array.from(document.querySelectorAll<HTMLImageElement>('img'))) {
+  let queued = 0, lazy = 0, skipped = 0, viewport = 0
+
+  const allImgs = document.querySelectorAll<HTMLImageElement>('img')
+  console.log(`[Pose] Scan started — ${allImgs.length} total <img> elements on page`)
+
+  for (const img of Array.from(allImgs)) {
     const rect = img.getBoundingClientRect()
-    const inViewport = rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth
-    if (inViewport) evaluateImgNow(img)
+    const inViewport =
+      rect.bottom > 0 && rect.top < innerHeight && rect.right > 0 && rect.left < innerWidth
+    if (!inViewport) continue
+    viewport++
+    const result = evaluateImgNow(img)
+    if (result === 'queued') queued++
+    else if (result === 'lazy') lazy++
+    else skipped++
   }
+
+  console.log(
+    `[Pose] Scan done — viewport: ${viewport}, queued: ${queued}, lazy: ${lazy}, skipped: ${skipped}`,
+  )
+
+  const result: ScanResult = { ok: true, viewport, queued, lazy, skipped }
+  sendResponse(result)
 })

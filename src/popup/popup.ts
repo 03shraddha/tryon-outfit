@@ -1,4 +1,5 @@
 import { getLookCount, getDomains } from '../lib/db.ts'
+import type { ScanResult } from '../types.ts'
 
 const enabledToggle = document.getElementById('enabledToggle') as HTMLInputElement
 const statusDot = document.getElementById('statusDot') as HTMLSpanElement
@@ -16,6 +17,7 @@ const limitUsed = document.getElementById('limitUsed') as HTMLSpanElement
 const looksCount = document.getElementById('looksCount') as HTMLSpanElement
 const bottomCount = document.getElementById('bottomCount') as HTMLDivElement
 const scanBtn = document.getElementById('scanBtn') as HTMLButtonElement
+const scanResult = document.getElementById('scanResult') as HTMLDivElement
 const openBtn = document.getElementById('openDressingRoom') as HTMLButtonElement
 const stopBtn = document.getElementById('stopBtn') as HTMLButtonElement
 const revealBtn = document.getElementById('revealBtn') as HTMLButtonElement
@@ -196,36 +198,60 @@ stopBtn.addEventListener('click', async () => {
   stopBtn.textContent = 'Stop'
 })
 
+function showScanResult(res: ScanResult | null, err?: string): void {
+  if (err) {
+    scanResult.style.color = '#e53e3e'
+    scanResult.textContent = err
+    return
+  }
+  if (!res) return
+  const found = res.queued + res.lazy
+  if (found === 0) {
+    scanResult.style.color = '#e53e3e'
+    scanResult.textContent = `No models found (${res.viewport} images in viewport — scroll to show products)`
+  } else {
+    scanResult.style.color = '#22c55e'
+    scanResult.textContent = `Found ${found} model image${found !== 1 ? 's' : ''} — processing…`
+  }
+  setTimeout(() => { scanResult.textContent = '' }, 8000)
+}
+
 scanBtn.addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   if (!tab?.id) return
 
   scanBtn.textContent = 'Scanning…'
   scanBtn.disabled = true
+  scanResult.textContent = ''
+
+  let res: ScanResult | null = null
 
   try {
-    // Try sending to an already-running content script first
-    await chrome.tabs.sendMessage(tab.id, { type: 'START_SCAN' })
+    res = await chrome.tabs.sendMessage(tab.id, { type: 'START_SCAN' }) as ScanResult
   } catch {
-    // Content script not present — inject it now (happens after extension reload)
+    // Content script not present — inject it now (happens after extension reload).
+    // Read the loader filename from the manifest so the hashed build path is always correct.
     try {
+      const manifest = chrome.runtime.getManifest()
+      const csFile = manifest.content_scripts?.[0]?.js?.[0]
+      if (!csFile) throw new Error('no content script in manifest')
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        files: ['src/content/index.ts'],
+        files: [csFile],
       })
-      await chrome.tabs.sendMessage(tab.id, { type: 'START_SCAN' })
-    } catch {
-      scanBtn.textContent = 'Refresh page & retry'
+      res = await chrome.tabs.sendMessage(tab.id, { type: 'START_SCAN' }) as ScanResult
+    } catch (injErr) {
+      scanBtn.textContent = 'Scan This Page'
       scanBtn.disabled = false
-      setTimeout(() => { scanBtn.textContent = 'Scan This Page' }, 3000)
+      showScanResult(null, 'Could not reach page — refresh the tab and try again')
+      console.error('[Pose] Scan injection failed:', injErr)
       return
     }
   }
 
-  setTimeout(() => {
-    scanBtn.textContent = 'Scan This Page'
-    scanBtn.disabled = false
-  }, 2000)
+  showScanResult(res)
+  scanBtn.textContent = 'Scan This Page'
+  scanBtn.disabled = false
 })
 
 openBtn.addEventListener('click', async () => {
