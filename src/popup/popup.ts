@@ -257,8 +257,23 @@ scanBtn.addEventListener('click', async () => {
   // The content script passes URLs back here to avoid the invalidated-extension-context problem
   // where chrome.runtime.sendMessage fails silently after an extension reload.
   if (res?.srcs?.length) {
+    let sent = 0
     for (const src of res.srcs) {
-      chrome.runtime.sendMessage({ type: 'QUEUE_IMAGE', src, domain: res.domain }).catch(() => {})
+      try {
+        await chrome.runtime.sendMessage({ type: 'QUEUE_IMAGE', src, domain: res.domain })
+        sent++
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        scanResult.style.color = '#e53e3e'
+        scanResult.textContent = `Background unreachable: ${msg.slice(0, 80)}`
+        console.error('[Pose] QUEUE_IMAGE send failed:', msg)
+        break
+      }
+    }
+    if (sent > 0 && scanResult.style.color !== 'rgb(229, 62, 62)') {
+      scanResult.style.color = '#22c55e'
+      scanResult.textContent = `Queued ${sent} image${sent !== 1 ? 's' : ''} — check dressing room`
+      setTimeout(() => { scanResult.textContent = '' }, 8000)
     }
   }
 })

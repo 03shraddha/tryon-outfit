@@ -196,21 +196,26 @@ chrome.runtime.onMessage.addListener((message: MessageToBackground, _sender, sen
     return
   }
 
-  if (message.type !== 'QUEUE_IMAGE') return
+  if (message.type !== 'QUEUE_IMAGE') return true
 
   const { src, domain } = message
+  void dbg('QUEUE_IMAGE_recv', src.slice(-50))
+  sendResponse({ ok: true })
+
   if (isUnfetchableUrl(src)) {
     console.debug('[Pose] QUEUE_IMAGE rejected (unfetchable):', src.slice(-60))
-    return
+    return true
   }
   if (queuedUrls.has(src)) {
+    void dbg('QUEUE_IMAGE_dup', src.slice(-50))
     console.debug('[Pose] QUEUE_IMAGE already queued:', src.slice(-60))
-    return
+    return true
   }
 
   console.log('[Pose] QUEUE_IMAGE received:', src.slice(-60))
   void dbg('QUEUE_IMAGE', src.slice(-50))
   void handleQueueImage(src, domain)
+  return true
 })
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -221,6 +226,9 @@ chrome.runtime.onInstalled.addListener(() => {
 // MV3 service workers die after ~30s of inactivity; the in-memory queue is wiped on
 // restart but DB records remain, so we need to re-enqueue them here.
 ;(async () => {
+  // Write a startup heartbeat so the dressing room can confirm the service worker is alive.
+  await chrome.storage.local.set({ poseDebug: { event: 'sw_start', detail: '', t: new Date().toLocaleTimeString() } })
+
   const looks = await getAllLooks().catch(() => [] as Look[])
   for (const look of looks) {
     if (look.status !== 'pending' && look.status !== 'processing') continue
