@@ -252,6 +252,15 @@ scanBtn.addEventListener('click', async () => {
   showScanResult(res)
   scanBtn.textContent = 'Scan This Page'
   scanBtn.disabled = false
+
+  // Send queued URLs to background from the popup (which always has a valid chrome context).
+  // The content script passes URLs back here to avoid the invalidated-extension-context problem
+  // where chrome.runtime.sendMessage fails silently after an extension reload.
+  if (res?.srcs?.length) {
+    for (const src of res.srcs) {
+      chrome.runtime.sendMessage({ type: 'QUEUE_IMAGE', src, domain: res.domain }).catch(() => {})
+    }
+  }
 })
 
 openBtn.addEventListener('click', async () => {

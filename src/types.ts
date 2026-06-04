@@ -32,4 +32,6 @@ export interface ScanResult {
   queued: number
   lazy: number
   skipped: number
+  srcs: string[]   // URLs of immediately-queued model images, sent by popup to avoid invalidated-context issues
+  domain: string
 }

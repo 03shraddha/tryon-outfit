@@ -51,12 +51,8 @@ function sendToBackground(src: string): void {
     src,
     domain: location.hostname.replace(/^www\./, ''),
   }
-  const t = new Date().toLocaleTimeString()
-  chrome.storage.local.set({ poseContentDebug: { event: 'sendMsg', detail: src.slice(-50), t } }).catch(() => {})
   chrome.runtime.sendMessage(message).catch((err) => {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.warn('[Pose] Failed to send QUEUE_IMAGE to background:', msg)
-    chrome.storage.local.set({ poseContentDebug: { event: 'sendErr', detail: msg.slice(0, 80), t } }).catch(() => {})
+    console.warn('[Pose] Failed to send QUEUE_IMAGE to background (lazy load):', err)
   })
 }
 
@@ -103,6 +99,8 @@ chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendRe
 
   const { innerHeight, innerWidth } = window
   let queued = 0, lazy = 0, skipped = 0, viewport = 0
+  const srcs: string[] = []
+  const domain = location.hostname.replace(/^www\./, '')
 
   const allImgs = document.querySelectorAll<HTMLImageElement>('img')
   console.log(`[Pose] Scan started — ${allImgs.length} total <img> elements on page`)
@@ -114,8 +112,14 @@ chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendRe
     if (!inViewport) continue
     viewport++
     const result = evaluateImgNow(img)
-    if (result === 'queued') queued++
-    else if (result === 'lazy') lazy++
+    if (result === 'queued') {
+      queued++
+      // Collect the URL so the popup (which has a valid chrome context) can send it to the background.
+      // This avoids the invalidated-context problem: after an extension reload the content script can
+      // still respond to messages but its chrome.runtime / chrome.storage APIs are dead.
+      const url = resolveUrl(img)
+      if (url) srcs.push(url)
+    } else if (result === 'lazy') lazy++
     else skipped++
   }
 
@@ -123,6 +127,6 @@ chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendRe
     `[Pose] Scan done — viewport: ${viewport}, queued: ${queued}, lazy: ${lazy}, skipped: ${skipped}`,
   )
 
-  const result: ScanResult = { ok: true, viewport, queued, lazy, skipped }
+  const result: ScanResult = { ok: true, viewport, queued, lazy, skipped, srcs, domain }
   sendResponse(result)
 })
