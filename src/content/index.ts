@@ -51,8 +51,12 @@ function sendToBackground(src: string): void {
     src,
     domain: location.hostname.replace(/^www\./, ''),
   }
+  const t = new Date().toLocaleTimeString()
+  chrome.storage.local.set({ poseContentDebug: { event: 'sendMsg', detail: src.slice(-50), t } }).catch(() => {})
   chrome.runtime.sendMessage(message).catch((err) => {
-    console.warn('[Pose] Failed to send QUEUE_IMAGE to background:', err)
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn('[Pose] Failed to send QUEUE_IMAGE to background:', msg)
+    chrome.storage.local.set({ poseContentDebug: { event: 'sendErr', detail: msg.slice(0, 80), t } }).catch(() => {})
   })
 }
 

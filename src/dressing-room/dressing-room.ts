@@ -171,19 +171,23 @@ async function refresh(): Promise<void> {
     return
   }
 
-  // Show last background event for live diagnostics (no DevTools needed)
+  // Show last content-script and background events for live diagnostics (no DevTools needed)
   try {
-    const stored = await chrome.storage.local.get('poseDebug') as {
+    const stored = await chrome.storage.local.get(['poseDebug', 'poseContentDebug']) as {
       poseDebug?: { event: string; detail: string; t: string }
+      poseContentDebug?: { event: string; detail: string; t: string }
     }
-    const d = stored.poseDebug
-    if (d) {
-      debugLine.textContent = `bg @ ${d.t}: ${d.event}${d.detail ? ' · ' + d.detail : ''}`
-      debugLine.style.color = d.event.includes('err') || d.event.includes('lost') ? '#e53e3e' : '#aaa'
-    } else {
-      debugLine.textContent = 'bg: no events yet — scan a page first'
-      debugLine.style.color = '#ccc'
-    }
+    const bg = stored.poseDebug
+    const cs = stored.poseContentDebug
+    const bgText = bg
+      ? `bg@${bg.t}: ${bg.event}${bg.detail ? '·' + bg.detail : ''}`
+      : 'bg: no events'
+    const csText = cs
+      ? `cs@${cs.t}: ${cs.event}${cs.detail ? '·' + cs.detail : ''}`
+      : 'cs: no events'
+    debugLine.textContent = `${csText}  |  ${bgText}`
+    const hasErr = (bg?.event ?? '').includes('err') || (bg?.event ?? '').includes('lost') || (cs?.event ?? '').includes('Err')
+    debugLine.style.color = hasErr ? '#e53e3e' : '#aaa'
   } catch { /* storage unavailable */ }
 
   render()
