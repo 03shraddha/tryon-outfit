@@ -16,22 +16,43 @@ function renderCard(look: Look): HTMLDivElement {
   const card = document.createElement('div')
   card.className = 'card'
 
-  if (look.status === 'done' && look.processedBlob) {
-    const objUrl = URL.createObjectURL(look.processedBlob)
-    const processed = document.createElement('img')
-    processed.alt = ''
-    processed.className = 'processed'
-    processed.addEventListener('load', () => URL.revokeObjectURL(objUrl), { once: true })
-    processed.src = objUrl
+  if (look.status === 'done') {
+    if (!look.processedBlob || look.processedBlob.size === 0) {
+      look = { ...look, status: 'error', errorMessage: 'Processed image unavailable — try scanning again' }
+    } else {
+      let objUrl: string
+      try {
+        objUrl = URL.createObjectURL(look.processedBlob)
+      } catch {
+        look = { ...look, status: 'error', errorMessage: 'Processed image unavailable — try scanning again' }
+        // fall through to error branch below
+        return renderCard(look)
+      }
+      const processed = document.createElement('img')
+      processed.alt = ''
+      processed.className = 'processed'
+      processed.addEventListener('load', () => URL.revokeObjectURL(objUrl), { once: true })
+      processed.onerror = () => { processed.style.display = 'none' }
+      processed.src = objUrl
 
-    const original = document.createElement('img')
-    original.src = look.originalSrc
-    original.alt = ''
-    original.className = 'original'
+      const original = document.createElement('img')
+      original.src = look.originalSrc
+      original.alt = ''
+      original.className = 'original'
 
-    card.appendChild(processed)
-    card.appendChild(original)
-  } else if (look.status === 'error') {
+      card.appendChild(processed)
+      card.appendChild(original)
+
+      const tag = document.createElement('span')
+      tag.className = 'domain-tag'
+      tag.textContent = look.domain
+      card.appendChild(tag)
+
+      return card
+    }
+  }
+
+  if (look.status === 'error') {
     const overlay = document.createElement('div')
     overlay.className = 'status-overlay'
 

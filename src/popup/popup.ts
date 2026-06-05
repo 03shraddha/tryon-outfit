@@ -261,12 +261,15 @@ scanBtn.addEventListener('click', async () => {
   // If any images were lazy (still loading at scan time), wait 2.5s for them to finish
   // and rescan to pick up the URLs stored in pendingLazyUrls by the load listener.
   if (res?.lazy > 0) {
-    setTimeout(async () => {
+    let polls = 0
+    const interval = setInterval(async () => {
+      if (++polls >= 5) { clearInterval(interval); return }
       try {
         const followUp = await chrome.tabs.sendMessage(tab.id!, { type: 'START_SCAN' }) as ScanResult
         await relayToBg(followUp)
-      } catch { /* popup closed or tab navigated away */ }
-    }, 2500)
+        if (followUp.lazy === 0) clearInterval(interval)
+      } catch { clearInterval(interval) }
+    }, 1000)
   }
 })
 

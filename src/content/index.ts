@@ -59,6 +59,10 @@ function sendToBackground(src: string): void {
 const seenThisPage = new Set<string>()
 const pendingLazyUrls: string[] = []
 
+const resetSeen = () => seenThisPage.clear()
+window.addEventListener('popstate', resetSeen)
+window.addEventListener('hashchange', resetSeen)
+
 type EvalResult = 'queued' | 'lazy' | 'skipped' | 'seen'
 
 function evaluateImgNow(img: HTMLImageElement): EvalResult {
@@ -79,7 +83,8 @@ function evaluateImgNow(img: HTMLImageElement): EvalResult {
         const loadedUrl = resolveUrl(img)
         if (!seenThisPage.has(loadedUrl) && isModelImage(img, loadedUrl)) {
           seenThisPage.add(loadedUrl)
-          pendingLazyUrls.push(loadedUrl)
+          sendToBackground(loadedUrl)    // primary: works in production at all times
+          pendingLazyUrls.push(loadedUrl) // fallback: popup follow-up drains this in dev
         }
       },
       { once: true },
