@@ -1,6 +1,3 @@
-import { getLookCount, getDomains } from '../lib/db.ts'
-import type { ScanResult } from '../types.ts'
-
 const enabledToggle = document.getElementById('enabledToggle') as HTMLInputElement
 const statusDot = document.getElementById('statusDot') as HTMLSpanElement
 const selfieImg1 = document.getElementById('selfieImg1') as HTMLImageElement
@@ -12,17 +9,10 @@ const slotLabel2 = document.getElementById('slotLabel2') as HTMLDivElement
 const selfieInput1 = document.getElementById('selfieInput1') as HTMLInputElement
 const selfieInput2 = document.getElementById('selfieInput2') as HTMLInputElement
 const apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement
-const limitInput = document.getElementById('limitInput') as HTMLInputElement
-const limitUsed = document.getElementById('limitUsed') as HTMLSpanElement
-const looksCount = document.getElementById('looksCount') as HTMLSpanElement
-const bottomCount = document.getElementById('bottomCount') as HTMLDivElement
-const scanBtn = document.getElementById('scanBtn') as HTMLButtonElement
-const scanResult = document.getElementById('scanResult') as HTMLDivElement
-const openBtn = document.getElementById('openDressingRoom') as HTMLButtonElement
-const stopBtn = document.getElementById('stopBtn') as HTMLButtonElement
 const revealBtn = document.getElementById('revealBtn') as HTMLButtonElement
 const testKeyBtn = document.getElementById('testKeyBtn') as HTMLButtonElement
 const keyStatus = document.getElementById('keyStatus') as HTMLSpanElement
+const openBtn = document.getElementById('openDressingRoom') as HTMLButtonElement
 
 function showSelfieSlot(
   img: HTMLImageElement,
@@ -36,37 +26,23 @@ function showSelfieSlot(
   label.textContent = 'Change'
 }
 
-async function refreshQueueStatus(): Promise<void> {
-  try {
-    const res = await chrome.runtime.sendMessage({ type: 'GET_QUEUE_SIZE' }) as { size: number }
-    const size = res?.size ?? 0
-    stopBtn.disabled = size === 0
-    stopBtn.textContent = size > 0 ? `Stop (${size})` : 'Stop'
-  } catch {
-    stopBtn.disabled = true
-  }
-}
-
 async function loadState(): Promise<void> {
-  const stored = await chrome.storage.local.get(['selfie1', 'selfie2', 'selfie', 'apiKey', 'enabled', 'dailyLimit', 'dailyUsage'])
+  const stored = await chrome.storage.local.get(['selfie1', 'selfie2', 'selfie', 'apiKey', 'enabled'])
   const raw = stored as {
     selfie1?: string
     selfie2?: string
     selfie?: string
     apiKey?: string
     enabled?: boolean
-    dailyLimit?: number
-    dailyUsage?: { date: string; count: number }
   }
 
-  // Migrate old single-selfie key and remove it to free storage
   if (!raw.selfie1 && raw.selfie) {
     await chrome.storage.local.set({ selfie1: raw.selfie })
     await chrome.storage.local.remove('selfie')
     raw.selfie1 = raw.selfie
   }
 
-  const { selfie1, selfie2, apiKey, enabled, dailyLimit, dailyUsage } = raw
+  const { selfie1, selfie2, apiKey, enabled } = raw
 
   enabledToggle.checked = enabled !== false
   statusDot.classList.toggle('active', enabled !== false)
@@ -74,22 +50,6 @@ async function loadState(): Promise<void> {
   if (selfie1) showSelfieSlot(selfieImg1, selfiePlaceholder1, slotLabel1, selfie1)
   if (selfie2) showSelfieSlot(selfieImg2, selfiePlaceholder2, slotLabel2, selfie2)
   if (apiKey) apiKeyInput.value = apiKey
-  if (dailyLimit) limitInput.value = String(dailyLimit)
-
-  const today = new Date().toISOString().slice(0, 10)
-  const used = dailyUsage?.date === today ? dailyUsage.count : 0
-  limitUsed.textContent = `${used} used`
-
-  const count = await getLookCount()
-  looksCount.textContent = `${count} looks`
-  bottomCount.textContent = count > 0 ? `${count} looks saved` : ''
-
-  const domains = await getDomains()
-  if (domains.length > 0) {
-    bottomCount.textContent = `${count} looks across ${domains.length} brand${domains.length > 1 ? 's' : ''}`
-  }
-
-  refreshQueueStatus()
 }
 
 enabledToggle.addEventListener('change', async () => {
@@ -175,138 +135,24 @@ async function testKey(): Promise<void> {
 
 testKeyBtn.addEventListener('click', testKey)
 
-let limitTimer: ReturnType<typeof setTimeout>
-limitInput.addEventListener('input', () => {
-  clearTimeout(limitTimer)
-  limitTimer = setTimeout(async () => {
-    const val = parseInt(limitInput.value, 10)
-    if (!isNaN(val) && val > 0) {
-      await chrome.storage.local.set({ dailyLimit: val })
-    }
-  }, 600)
-})
-
 revealBtn.addEventListener('click', () => {
   const isPassword = apiKeyInput.type === 'password'
   apiKeyInput.type = isPassword ? 'text' : 'password'
   revealBtn.textContent = isPassword ? '🙈' : '👁'
 })
 
-stopBtn.addEventListener('click', async () => {
-  await chrome.runtime.sendMessage({ type: 'CLEAR_QUEUE' })
-  stopBtn.disabled = true
-  stopBtn.textContent = 'Stop'
-})
-
-function showScanResult(res: ScanResult | null, err?: string): void {
-  if (err) {
-    scanResult.style.color = '#e53e3e'
-    scanResult.textContent = err
-    return
-  }
-  if (!res) return
-  const found = res.queued + res.lazy
-  if (found === 0) {
-    scanResult.style.color = '#e53e3e'
-    scanResult.textContent = `No models found (${res.viewport} images in viewport — scroll to show products)`
-  } else {
-    scanResult.style.color = '#22c55e'
-    scanResult.textContent = `Found ${found} model image${found !== 1 ? 's' : ''} — processing…`
-  }
-  setTimeout(() => { scanResult.textContent = '' }, 8000)
-}
-
-scanBtn.addEventListener('click', async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!tab?.id) return
-
-  scanBtn.textContent = 'Scanning…'
-  scanBtn.disabled = true
-  scanResult.textContent = ''
-
-  let res: ScanResult | null = null
-
-  try {
-    res = await chrome.tabs.sendMessage(tab.id, { type: 'START_SCAN' }) as ScanResult
-  } catch {
-    // Content script not present — inject it now (happens after extension reload).
-    // Read the loader filename from the manifest so the hashed build path is always correct.
-    try {
-      const manifest = chrome.runtime.getManifest()
-      const csFile = manifest.content_scripts?.[0]?.js?.[0]
-      if (!csFile) throw new Error('no content script in manifest')
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: [csFile],
-      })
-      res = await chrome.tabs.sendMessage(tab.id, { type: 'START_SCAN' }) as ScanResult
-    } catch (injErr) {
-      scanBtn.textContent = 'Scan This Page'
-      scanBtn.disabled = false
-      showScanResult(null, 'Could not reach page — refresh the tab and try again')
-      console.error('[Pose] Scan injection failed:', injErr)
-      return
-    }
-  }
-
-  showScanResult(res)
-  scanBtn.textContent = 'Scan This Page'
-  scanBtn.disabled = false
-
-  // Send queued URLs to background from the popup (which always has a valid chrome context).
-  // The content script passes URLs back here to avoid the invalidated-extension-context problem
-  // where chrome.runtime.sendMessage fails silently after an extension reload.
-  await relayToBg(res)
-
-  // If any images were lazy (still loading at scan time), wait 2.5s for them to finish
-  // and rescan to pick up the URLs stored in pendingLazyUrls by the load listener.
-  if (res?.lazy > 0) {
-    let polls = 0
-    const interval = setInterval(async () => {
-      if (++polls >= 5) { clearInterval(interval); return }
-      try {
-        const followUp = await chrome.tabs.sendMessage(tab.id!, { type: 'START_SCAN' }) as ScanResult
-        await relayToBg(followUp)
-        if (followUp.lazy === 0) clearInterval(interval)
-      } catch { clearInterval(interval) }
-    }, 1000)
-  }
-})
-
-async function relayToBg(res: ScanResult | null): Promise<void> {
-  if (!res?.srcs?.length) return
-  let sent = 0
-  for (const src of res.srcs) {
-    try {
-      await chrome.runtime.sendMessage({ type: 'QUEUE_IMAGE', src, domain: res.domain })
-      sent++
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      scanResult.style.color = '#e53e3e'
-      scanResult.textContent = `Background unreachable: ${msg.slice(0, 80)}`
-      console.error('[Pose] QUEUE_IMAGE send failed:', msg)
-      return
-    }
-  }
-  if (sent > 0) {
-    scanResult.style.color = '#22c55e'
-    scanResult.textContent = `Queued ${sent} image${sent !== 1 ? 's' : ''} — check dressing room`
-    setTimeout(() => { scanResult.textContent = '' }, 8000)
-  }
-}
-
 openBtn.addEventListener('click', async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  const tabId = tab?.id
   let domain = ''
   try {
     if (tab?.url) domain = new URL(tab.url).hostname.replace(/^www\./, '')
   } catch { /* non-URL tab */ }
   const base = chrome.runtime.getURL('src/dressing-room/index.html')
-  const url = domain ? `${base}?domain=${encodeURIComponent(domain)}` : base
-  chrome.tabs.create({ url })
+  const params = new URLSearchParams()
+  if (tabId) params.set('tabId', String(tabId))
+  if (domain) params.set('domain', domain)
+  chrome.tabs.create({ url: `${base}?${params}` })
 })
-
-// Refresh queue size every 2s while popup is open
-setInterval(refreshQueueStatus, 2000)
 
 loadState()

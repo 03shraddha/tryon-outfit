@@ -15,7 +15,6 @@
         padding: 20px;
       }
 
-      /* Header */
       header {
         display: flex;
         align-items: center;
@@ -30,13 +29,6 @@
         color: #111;
       }
 
-      .looks-badge {
-        font-size: 11px;
-        color: #999;
-        font-weight: 400;
-      }
-
-      /* Toggle row */
       .toggle-row {
         display: flex;
         align-items: center;
@@ -99,7 +91,6 @@
       input:checked + .slider { background: #111; }
       input:checked + .slider::before { transform: translateX(16px); }
 
-      /* Selfie */
       .section-label {
         font-size: 10px;
         font-weight: 600;
@@ -170,7 +161,6 @@
 
       input[type="file"] { display: none; }
 
-      /* API key */
       .api-row {
         padding-bottom: 16px;
         border-bottom: 1px solid #f0f0f0;
@@ -233,50 +223,9 @@
 
       .test-key-btn:hover { background: #f7f7f7; }
 
-      /* Daily limit */
-      .limit-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding-bottom: 16px;
-        border-bottom: 1px solid #f0f0f0;
-        margin-bottom: 16px;
-      }
-
-      .limit-left {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-      }
-
-      .limit-used {
-        font-size: 11px;
-        color: #aaa;
-      }
-
-      .limit-input-wrap {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-
-      .limit-input {
-        width: 52px;
-        text-align: center;
-        padding: 6px 8px !important;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-        font-size: 13px !important;
-      }
-
-      /* Buttons */
-      .btn-row {
-        display: flex;
-        gap: 8px;
-      }
-
-      .scan-btn {
-        flex: 1;
-        padding: 11px;
+      .open-btn {
+        width: 100%;
+        padding: 12px;
         background: #111;
         color: #fff;
         border: none;
@@ -288,56 +237,19 @@
         letter-spacing: 0.01em;
       }
 
-      .scan-btn:hover { background: #333; }
-      .scan-btn:disabled { background: #f0f0f0; color: #bbb; cursor: default; }
+      .open-btn:hover { background: #333; }
 
-      .stop-btn {
-        padding: 11px 14px;
-        background: #fff;
-        color: #e53e3e;
-        border: 1px solid #fca5a5;
-        border-radius: 8px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background 0.15s, border-color 0.15s;
-        white-space: nowrap;
-      }
-
-      .stop-btn:hover { background: #fff5f5; border-color: #f87171; }
-      .stop-btn:disabled { color: #ddd; border-color: #eee; cursor: default; }
-
-      .secondary-row {
-        display: flex;
-        justify-content: center;
-        margin-top: 8px;
-      }
-
-      .view-btn {
-        background: none;
-        border: none;
-        font-size: 11px;
-        color: #bbb;
-        cursor: pointer;
-        padding: 2px 4px;
-        transition: color 0.15s;
-      }
-
-      .view-btn:hover { color: #666; }
-
-      .bottom-count {
+      .open-hint {
         text-align: center;
-        font-size: 11px;
-        color: #bbb;
-        margin-top: 4px;
-        min-height: 16px;
+        font-size: 10px;
+        color: #ccc;
+        margin-top: 6px;
       }
     </style>
   </head>
   <body>
     <header>
       <h1>POSE</h1>
-      <span class="looks-badge" id="looksCount">— looks</span>
     </header>
 
     <div class="toggle-row">
@@ -383,25 +295,8 @@
       <button id="testKeyBtn" class="test-key-btn">Test API Key</button>
     </div>
 
-    <div class="limit-row">
-      <div class="limit-left">
-        <div class="section-label">Daily limit</div>
-        <div class="limit-used" id="limitUsed">0 used today</div>
-      </div>
-      <div class="limit-input-wrap">
-        <input type="text" id="limitInput" class="limit-input" value="50" />
-      </div>
-    </div>
-
-    <div class="btn-row">
-      <button class="scan-btn" id="scanBtn">Scan This Page</button>
-      <button class="stop-btn" id="stopBtn" disabled>Stop</button>
-    </div>
-    <div id="scanResult" style="min-height:18px;margin-top:6px;font-size:11px;text-align:center;color:#aaa;"></div>
-    <div class="secondary-row">
-      <button class="view-btn" id="openDressingRoom">View Dressing Room →</button>
-    </div>
-    <div class="bottom-count" id="bottomCount"></div>
+    <button class="open-btn" id="openDressingRoom">Open Dressing Room →</button>
+    <div class="open-hint">Scan &amp; generate from inside the dressing room</div>
 
     <script type="module" src="./popup.ts"></script>
   </body>

@@ -14,13 +14,14 @@
         min-height: 100vh;
       }
 
-      /* Header */
       .header {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         justify-content: space-between;
-        padding: 32px 40px 24px;
+        padding: 24px 32px;
         border-bottom: 1px solid #f0f0f0;
+        background: #fff;
+        gap: 16px;
       }
 
       .header-left h1 {
@@ -28,67 +29,69 @@
         font-weight: 600;
         letter-spacing: 0.1em;
         color: #111;
-        margin-bottom: 2px;
       }
 
-      .total-count {
-        font-size: 11px;
-        color: #bbb;
-      }
-
-      .clear-btn {
-        background: none;
-        border: 1px solid #e8e8e8;
-        border-radius: 6px;
-        padding: 6px 12px;
+      #status {
         font-size: 11px;
         color: #aaa;
-        cursor: pointer;
-        transition: border-color 0.15s, color 0.15s;
-        white-space: nowrap;
-        align-self: center;
+        margin-top: 3px;
+        min-height: 16px;
       }
 
-      .clear-btn:hover { border-color: #f87171; color: #e53e3e; }
-
-      /* Tabs */
-      .tabs {
+      .header-actions {
         display: flex;
-        gap: 0;
-        padding: 0 40px;
-        border-bottom: 1px solid #f0f0f0;
-        overflow-x: auto;
-        scrollbar-width: none;
-        background: #fff;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
       }
 
-      .tabs::-webkit-scrollbar { display: none; }
-
-      .tab {
-        padding: 14px 16px;
+      .scan-btn {
+        padding: 9px 18px;
+        background: #111;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
         font-size: 12px;
-        color: #aaa;
+        font-weight: 600;
         cursor: pointer;
-        border-bottom: 1px solid transparent;
+        transition: background 0.15s;
         white-space: nowrap;
-        transition: color 0.15s;
-        user-select: none;
       }
 
-      .tab:hover { color: #555; }
+      .scan-btn:hover { background: #333; }
+      .scan-btn:disabled { background: #e0e0e0; color: #bbb; cursor: default; }
 
-      .tab.active {
-        color: #111;
-        border-bottom-color: #111;
+      .generate-btn {
+        padding: 9px 18px;
+        background: #111;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+        white-space: nowrap;
+        display: none;
       }
 
-      .tab .tab-count {
-        margin-left: 6px;
-        font-size: 10px;
-        color: #ccc;
+      .generate-btn:hover { background: #333; }
+
+      .load-more-btn {
+        padding: 9px 18px;
+        background: #fff;
+        color: #555;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+        white-space: nowrap;
+        display: none;
       }
 
-      .tab.active .tab-count { color: #999; }
+      .load-more-btn:hover { background: #f7f7f7; border-color: #ccc; }
 
       /* Grid */
       .grid {
@@ -104,7 +107,7 @@
         aspect-ratio: 3/4;
         overflow: hidden;
         background: #efefef;
-        cursor: pointer;
+        cursor: default;
       }
 
       .card img {
@@ -115,6 +118,8 @@
         object-fit: cover;
         transition: opacity 0.25s;
       }
+
+      .card .processed { z-index: 1; }
 
       .card .original {
         opacity: 0;
@@ -136,15 +141,14 @@
         pointer-events: none;
       }
 
-      /* Status overlay for pending/processing */
-      .card .status-overlay {
+      .status-overlay {
         position: absolute;
         inset: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: #f5f5f5;
+        background: rgba(245,245,245,0.9);
         z-index: 4;
         gap: 8px;
         padding: 0 16px;
@@ -165,6 +169,7 @@
         font-size: 10px;
         color: #bbb;
         letter-spacing: 0.06em;
+        text-transform: uppercase;
       }
 
       .error-icon {
@@ -184,14 +189,14 @@
       .empty {
         grid-column: 1 / -1;
         text-align: center;
-        padding: 80px 40px;
+        padding: 100px 40px;
         color: #ccc;
       }
 
       .empty h2 {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 500;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         color: #bbb;
       }
 
@@ -200,33 +205,32 @@
         line-height: 1.6;
       }
 
-      /* Hover hint */
-      .hover-hint {
-        font-size: 11px;
-        color: #ccc;
-        padding: 16px 40px;
-        text-align: right;
-      }
+      .empty strong { color: #999; }
 
-      .content { padding: 0; }
+      .hover-hint {
+        text-align: right;
+        font-size: 10px;
+        color: #d0d0d0;
+        padding: 10px 16px 6px;
+      }
     </style>
   </head>
   <body>
     <div class="header">
       <div class="header-left">
         <h1>POSE · DRESSING ROOM</h1>
-        <div class="total-count" id="totalCount">Loading…</div>
-        <div id="debugLine" style="font-size:10px;color:#ccc;margin-top:3px;font-family:monospace;"></div>
+        <div id="status"></div>
       </div>
-      <button class="clear-btn" id="clearFailed">Clear Failed</button>
+      <div class="header-actions">
+        <button class="scan-btn" id="scanBtn">Scan Page</button>
+        <button class="generate-btn" id="generateBtn">Generate 3</button>
+        <button class="load-more-btn" id="loadMoreBtn">Skip &amp; load more</button>
+      </div>
     </div>
 
-    <div class="tabs" id="tabs"></div>
-    <div class="hover-hint" id="hoverHint" style="display:none">Hover to see original</div>
+    <div class="hover-hint">Hover a result to see the original</div>
 
-    <div class="content">
-      <div class="grid" id="grid"></div>
-    </div>
+    <div class="grid" id="grid"></div>
 
     <script type="module" src="./dressing-room.ts"></script>
   </body>

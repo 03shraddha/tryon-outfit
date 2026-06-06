@@ -1,4 +1,4 @@
-import type { MessageToBackground, MessageToContent, ScanResult } from '../types.ts'
+import type { MessageToContent, ScanResult } from '../types.ts'
 import { isUnfetchableUrl, isPlaceholderDataUri } from '../lib/imageUrl.ts'
 
 const MIN_SIZE = 300
@@ -43,20 +43,8 @@ function isModelImage(img: HTMLImageElement, url: string): boolean {
   return false
 }
 
-function sendToBackground(src: string): void {
-  if (isUnfetchableUrl(src)) return
-
-  const message: MessageToBackground = {
-    type: 'QUEUE_IMAGE',
-    src,
-    domain: location.hostname.replace(/^www\./, ''),
-  }
-  chrome.runtime.sendMessage(message).catch((err) => {
-    console.warn('[Pose] Failed to send QUEUE_IMAGE to background (lazy load):', err)
-  })
-}
-
 const seenThisPage = new Set<string>()
+// URLs collected from lazy-load events; drained on the next START_SCAN
 const pendingLazyUrls: string[] = []
 
 const resetSeen = () => seenThisPage.clear()
@@ -83,8 +71,7 @@ function evaluateImgNow(img: HTMLImageElement): EvalResult {
         const loadedUrl = resolveUrl(img)
         if (!seenThisPage.has(loadedUrl) && isModelImage(img, loadedUrl)) {
           seenThisPage.add(loadedUrl)
-          sendToBackground(loadedUrl)    // primary: works in production at all times
-          pendingLazyUrls.push(loadedUrl) // fallback: popup follow-up drains this in dev
+          pendingLazyUrls.push(loadedUrl)
         }
       },
       { once: true },
@@ -94,7 +81,6 @@ function evaluateImgNow(img: HTMLImageElement): EvalResult {
 
   if (isModelImage(img, url)) {
     seenThisPage.add(url)
-    sendToBackground(url)
     return 'queued'
   }
   return 'skipped'
@@ -108,9 +94,7 @@ chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendRe
   const srcs: string[] = []
   const domain = location.hostname.replace(/^www\./, '')
 
-  // Drain URLs from lazy-load events that fired since the last scan.
-  // These are stored here instead of calling sendToBackground() directly,
-  // since that fails silently when the content script context is invalidated.
+  // Drain lazy-load URLs collected since the last scan
   const drained = pendingLazyUrls.splice(0)
   for (const u of drained) {
     srcs.push(u)
@@ -129,9 +113,6 @@ chrome.runtime.onMessage.addListener((message: MessageToContent, _sender, sendRe
     const result = evaluateImgNow(img)
     if (result === 'queued') {
       queued++
-      // Collect the URL so the popup (which has a valid chrome context) can send it to the background.
-      // This avoids the invalidated-context problem: after an extension reload the content script can
-      // still respond to messages but its chrome.runtime / chrome.storage APIs are dead.
       const url = resolveUrl(img)
       if (url) srcs.push(url)
     } else if (result === 'lazy') lazy++

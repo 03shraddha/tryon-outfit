@@ -16,11 +16,9 @@ export async function swapModel(
   productBlob: Blob,
   selfieBase64s: string[],
   apiKey: string,
-): Promise<Blob> {
+): Promise<string> {
   const form = new FormData()
   form.append('model', 'gpt-image-1')
-  // OpenAI requires 'image[]' (array notation) when sending multiple files;
-  // a plain repeated 'image' key causes "Duplicate parameter" 400 errors.
   form.append('image[]', productBlob, 'product.png')
   selfieBase64s.forEach((b64, i) => {
     form.append('image[]', base64ToBlob(b64), `reference-${i + 1}.png`)
@@ -56,5 +54,5 @@ export async function swapModel(
   }
 
   const json = (await res.json()) as { data: Array<{ b64_json: string }> }
-  return base64ToBlob(json.data[0].b64_json)
+  return 'data:image/png;base64,' + json.data[0].b64_json
 }
